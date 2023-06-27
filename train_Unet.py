@@ -58,6 +58,10 @@ def train(net, loaders, args):
             l.mean().backward()
             # make the optimization step
             optimizer.step()
+            
+            if i % 50 == 0:
+                print(f'Epoch: {epoch} batch: {i} mean train loss: {loss_batch/len(x) : 5.10f}')
+                save_network(net, args['name'] + f'_{epoch}')
 
         # calculate the loss and accuracy of the validation set
         net.eval()
@@ -75,7 +79,7 @@ def train(net, loaders, args):
         print(f'Epoch: {epoch} mean train loss: {L / n_train : 5.10f} mean val. rec. loss: {L_val / n_val : 5.10f}')
         if epoch % 5 == 0:
             save_network(net, args['name'] + f'_{epoch}')
-            plot_outputs(net.encoder, net.decoder, x_val, y_val, args['name'] + f'_{epoch}')
+            plot_outputs(x_val, y_val, args['name'] + f'_{epoch}')
     save_network(net, args['name'])
     plot_outputs(label_val, y_val, args['name'] + f'_{epoch}')
 
