@@ -10,8 +10,8 @@ from torch.utils.data import Dataset, DataLoader
 class dataset(Dataset):
     def __init__(self, res, type=None):
         if type=='simple':
-            self.imgs_path = "reduxed_results/reduxed_results/geometry/"
-            self.label_path = "reduxed_results/reduxed_results/damage_fields/"
+            self.imgs_path = "reduxed_results/geometry/"
+            self.label_path = "reduxed_results/damage_fields/"
             input_path = [self.imgs_path + str(x) + '.npy' for x in range(15000)]
             output_path = [self.label_path + str(x) + '_99.npy' for x in range(15000)]
             self.data = []
