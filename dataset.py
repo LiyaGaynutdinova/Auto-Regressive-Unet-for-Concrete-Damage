@@ -41,6 +41,7 @@ class dataset(Dataset):
             img = torch.tensor(np.load(img_path)[:-1,:-1], dtype=torch.float)
             label = torch.tensor(np.load(label_path)[:-1,:-1], dtype=torch.float)
             tensor = torch.stack([img, label])
+            tensor = torch.unsqueeze(tensor,1)     
         else:
             img_path_1, img_path_2, label_path = self.data[idx]
             img_1 = torch.tensor(np.load(img_path_1)[:-1,:-1], dtype=torch.float)
@@ -49,8 +50,7 @@ class dataset(Dataset):
             else:
                 img_2 = torch.tensor(np.load(img_path_2)[:-1,:-1], dtype=torch.float)
             label = torch.tensor(np.load(label_path)[:-1,:-1], dtype=torch.float)
-            tensor = torch.stack([img_1, img_2, label])
-        tensor = torch.unsqueeze(tensor,1)        
+            tensor = torch.stack([img_1, img_2, label])   
         transform = torch.nn.Sequential(
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.5)
