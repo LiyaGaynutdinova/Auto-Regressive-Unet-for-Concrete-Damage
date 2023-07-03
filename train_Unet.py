@@ -7,7 +7,7 @@ from save_load import *
 
 def plot_outputs(x, y, fname):
     n_samples = len(x)
-    fig, axs = plt.subplots(nrows=2, ncols=n_samples, figsize=(n_samples, 2), dpi=100)
+    fig, axs = plt.subplots(nrows=2, ncols=n_samples, figsize=(n_samples, 2), dpi=200)
     for i in range(n_samples):
         axs.flat[i].imshow(x[i][0].detach().cpu().numpy(), cmap='Greys')
         axs.flat[i].set_axis_off()
@@ -44,11 +44,12 @@ def train(net, loaders, args):
         # loop fetching a mini-batch of data at each iteration
         for i, (x, label) in enumerate(loaders['train']):
             x = x.to(args['dev'])
+            label = label.to(args['dev'])
             # apply the network
             y = net(x)
-            y_filtered = y * x.round()
+            #y_filtered = torch.where(x>0, 1., 0.).detach() * y
             # calculate mini-batch losses
-            l = loss(y_filtered, label).sum()
+            l = loss(y, label).sum()
             # accumulate the total loss as a regular float number
             loss_batch = l.detach().item()
             L += loss_batch
@@ -59,7 +60,7 @@ def train(net, loaders, args):
             # make the optimization step
             optimizer.step()
             
-            if i % 50 == 0:
+            if i % 200 == 0:
                 print(f'Epoch: {epoch} batch: {i} mean train loss: {loss_batch/len(x) : 5.10f}')
                 save_network(net, args['name'] + f'_{epoch}')
 
@@ -71,15 +72,17 @@ def train(net, loaders, args):
         L_val = 0
         for j, (x_val, label_val) in enumerate(loaders['val']):
             x_val = x_val.to(args['dev'])
+            label_val = label_val.to(args['dev'])
             y_val = net(x_val)
-            y_val_filtered = y * x.round()
-            L_val += loss(y_val_filtered, label_val).detach().sum().item()
+            #y_val_filtered = torch.where(x_val>0, 1., 0.).detach() * y_val
+            L_val += loss(y_val, label_val).detach().sum().item()
         losses_train.append(L / n_train)
+        losses_val.append(L_val / n_val)
 
         print(f'Epoch: {epoch} mean train loss: {L / n_train : 5.10f} mean val. rec. loss: {L_val / n_val : 5.10f}')
         if epoch % 5 == 0:
             save_network(net, args['name'] + f'_{epoch}')
-            plot_outputs(x_val, y_val, args['name'] + f'_{epoch}')
+            plot_outputs(label_val, y_val, args['name'] + f'_{epoch}')
     save_network(net, args['name'])
     plot_outputs(label_val, y_val, args['name'] + f'_{epoch}')
 
