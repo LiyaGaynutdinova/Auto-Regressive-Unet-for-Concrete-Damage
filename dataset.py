@@ -8,34 +8,53 @@ from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 
 class dataset(Dataset):
-    def __init__(self, res, type=None):
+    def __init__(self, type=None):
+        self.imgs_path = "reduxed_results/geometry/"
+        self.label_path = "reduxed_results/damage_fields_full/"
+        self.data = []
         if type=='simple':
-            self.imgs_path = "reduxed_results/reduxed_results/geometry/"
-            self.label_path = "reduxed_results/reduxed_results/damage_fields/"
+            self.simple = True
             input_path = [self.imgs_path + str(x) + '.npy' for x in range(15000)]
             output_path = [self.label_path + str(x) + '_99.npy' for x in range(15000)]
-            self.data = []
             for i in range(15000):
-                self.data.append([input_path[i], output_path[i]])
-                
+                self.data.append([input_path[i], output_path[i]])            
         else:
-            raise('Not implemented')
-        
+            self.simple = False
+            for i in range(15000):
+                input_1_path = self.imgs_path + str(i) + '.npy'
+                input_2_path = 'null'
+                output_path = self.label_path + str(i) + '_11.npy'
+                self.data.append([input_1_path, input_2_path, output_path])  
+                for j in range(9):
+                    input_1_path = self.imgs_path + str(i) + '.npy'
+                    input_2_path = self.label_path + str(i) + '_' + str((j+1)*11) + '.npy'
+                    output_path = self.label_path + str(i) + '_' + str((j+2)*11) + '.npy'
+                    self.data.append([input_1_path, input_2_path, output_path])      
         self.img_res = 99
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
-        img_path, label_path = self.data[idx]
+        if self.simple == True:
+            img_path, label_path = self.data[idx]
+            img = torch.tensor(np.load(img_path)[:-1,:-1], dtype=torch.float)
+            label = torch.tensor(np.load(label_path)[:-1,:-1], dtype=torch.float)
+            tensor = torch.stack([img, label])
+        else:
+            img_path_1, img_path_2, label_path = self.data[idx]
+            img_1 = torch.tensor(np.load(img_path_1)[:-1,:-1], dtype=torch.float)
+            if img_path_2 == 'null':
+                img_2 = torch.zeros((99, 99))
+            else:
+                img_2 = torch.tensor(np.load(img_path_2)[:-1,:-1], dtype=torch.float)
+            label = torch.tensor(np.load(label_path)[:-1,:-1], dtype=torch.float)
+            tensor = torch.stack([img_1, img_2, label])
+        tensor = torch.unsqueeze(tensor,1)        
         transform = torch.nn.Sequential(
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.5)
-        )       
-        img = torch.tensor(np.load(img_path)[:-1,:-1], dtype=torch.float)
-        label = torch.tensor(np.load(label_path)[:-1,:-1], dtype=torch.float)
-        tensor = torch.stack([img, label])
-        tensor = torch.unsqueeze(tensor,1)
+        ) 
         tensor = transform(tensor)
         k = np.random.rand()
         if (k < 0.25):
@@ -48,8 +67,7 @@ class dataset(Dataset):
         roll_y = np.random.randint(self.img_res)
         tensor = torch.roll(tensor, roll_x, -2)
         tensor = torch.roll(tensor, roll_y, -1)
-        return tensor[0], tensor[1]
-
+        return tensor[0:-1], tensor[-1]
 
 def get_loaders(data, batch_size):
     n_train = int(0.8 * data.__len__())
@@ -60,5 +78,22 @@ def get_loaders(data, batch_size):
     train_loader = DataLoader(train_set, batch_size = batch_size, shuffle=True, num_workers=0)
     val_loader = DataLoader(val_set, batch_size = batch_size)
     test_loader = DataLoader(test_set, batch_size = n_test, shuffle=True)
+    loaders = {'train' : train_loader, 'val' : val_loader, 'test' : test_loader}
+    return loaders
+
+def get_loaders_manual(data, batch_size):
+    dataset_size = len(data)
+    indices = list(range(dataset_size))
+    n_train = int(0.8 * dataset_size)
+    n_val = int(0.1* dataset_size)
+    train_indices = indices[:n_train]
+    val_indices = indices[n_train:(n_train + n_val)]
+    test_indices = indices[(n_train + n_val):]
+    train_set = torch.utils.data.Subset(data, train_indices)
+    val_set = torch.utils.data.Subset(data, val_indices)
+    test_set = torch.utils.data.Subset(data, test_indices)
+    train_loader = DataLoader(train_set, batch_size = batch_size, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_set, batch_size = batch_size)
+    test_loader = DataLoader(test_set, batch_size = batch_size, shuffle=True)
     loaders = {'train' : train_loader, 'val' : val_loader, 'test' : test_loader}
     return loaders
