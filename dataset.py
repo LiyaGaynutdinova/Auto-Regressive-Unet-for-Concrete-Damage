@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 class dataset(Dataset):
     def __init__(self, type=None):
         self.imgs_path = "reduxed_results/geometry/"
-        self.label_path = "reduxed_results/damage_fields_full/"
+        self.label_path = "reduxed_results/damage_fields/"
         self.data = []
         if type=='simple':
             self.simple = True
