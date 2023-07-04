@@ -78,7 +78,7 @@ def train(net, loaders, args):
         losses_val.append(L_val / n_val)
 
         print(f'Epoch: {epoch} mean train loss: {L / n_train : 5.10f} mean val. rec. loss: {L_val / n_val : 5.10f}')
-        if epoch % 5 == 0:
+        if epoch % 1 == 0:
             save_network(net, args['name'] + f'_{epoch}')
             plot_outputs(label_val, y_val, args['name'] + f'_{epoch}')
     save_network(net, args['name'])
