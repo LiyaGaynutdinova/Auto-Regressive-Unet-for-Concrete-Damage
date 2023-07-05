@@ -59,7 +59,7 @@ def train(net, loaders, args):
             # make the optimization step
             optimizer.step()
             
-            if i % 100 == 0:
+            if i % 200 == 0:
                 print(f'Epoch: {epoch} batch: {i} mean train loss: {loss_batch/len(x) : 5.10f}')
                 save_network(net, args['name'] + f'_{epoch}')
 
@@ -73,7 +73,7 @@ def train(net, loaders, args):
             x_val = x_val.to(args['dev'])
             label_val = label_val.to(args['dev']).view(-1,1,99,99)
             y_val = net(x_val)
-            L_val += loss(y_val, label_val).detach().sum().item()
+            L_val += loss(y_val, label_val).detach().item()
         losses_train.append(L / n_train)
         losses_val.append(L_val / n_val)
 
