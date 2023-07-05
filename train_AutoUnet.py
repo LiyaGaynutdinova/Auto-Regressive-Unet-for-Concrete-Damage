@@ -48,7 +48,7 @@ def train(net, loaders, args):
             # apply the network
             y = net(x)
             # calculate mini-batch losses
-            l = loss(y, label-x[:,1].view(-1,1,99,99)).sum()
+            l = loss(y, label).sum()
             # accumulate the total loss as a regular float number
             loss_batch = l.detach().item()
             L += loss_batch
@@ -73,12 +73,12 @@ def train(net, loaders, args):
             x_val = x_val.to(args['dev'])
             label_val = label_val.to(args['dev']).view(-1,1,99,99)
             y_val = net(x_val)
-            L_val += loss(y_val, label_val-x_val[:,1].view(-1,1,99,99)).detach().sum().item()
+            L_val += loss(y_val, label_val).detach().item()
         losses_train.append(L / n_train)
         losses_val.append(L_val / n_val)
 
         print(f'Epoch: {epoch} mean train loss: {L / n_train : 5.10f} mean val. rec. loss: {L_val / n_val : 5.10f}')
-        if epoch % 5 == 0:
+        if epoch % 1 == 0:
             save_network(net, args['name'] + f'_{epoch}')
             plot_outputs(label_val, y_val, args['name'] + f'_{epoch}')
     save_network(net, args['name'])
