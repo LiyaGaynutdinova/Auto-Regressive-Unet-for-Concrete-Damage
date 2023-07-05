@@ -79,7 +79,7 @@ class dataset_seq(Dataset):
         imp_shrinkage_values = pd.read_csv(self.label_path + 'stiffness_0.csv', sep='\t', usecols=['#shr_imposed[-]']).values.tolist()
         imp_shrinkage_matrices = [np.full((self.img_res, self.img_res), value) for value in imp_shrinkage_values]
         imp_shrinkage_matrices_stacked = np.stack(imp_shrinkage_matrices)
-        self.imp_shrinkage = torch.tensor(imp_shrinkage_matrices_stacked)
+        self.imp_shrinkage = torch.tensor(imp_shrinkage_matrices_stacked, dtype=torch.float)
         self.data = []
         for i in range(15000):
             if i != 5000:
@@ -102,7 +102,7 @@ class dataset_seq(Dataset):
         img_null = np.zeros(((99, 99)))
         img_stacked = np.stack([img_geometry, img_null])
         img_stacked = np.concatenate([img_stacked, img_damage])
-        tensor = torch.tensor(img_stacked)
+        tensor = torch.tensor(img_stacked, dtype=torch.float)
         transform = torch.nn.Sequential(
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.5)
@@ -115,7 +115,7 @@ class dataset_seq(Dataset):
             tensor = transforms.functional.rotate(tensor, 180)
         elif (k >= 0.5) and (k < 0.75):
             tensor = transforms.functional.rotate(tensor, 270)
-        return tensor[0].view(1,self.img_res,self.img_res), tensor[1:], self.imp_shrinkage, torch.tensor([sequence['obs_shrinkage']]).flatten()
+        return tensor[0].view(1,self.img_res,self.img_res), tensor[1:], self.imp_shrinkage, torch.tensor([sequence['obs_shrinkage']], dtype=torch.float).flatten()
 
 def get_loaders(data, batch_size):
     n_train = int(0.8 * data.__len__())

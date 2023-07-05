@@ -25,7 +25,7 @@ class CircularPad(nn.Module):
         x = self.circ_pad(x, pad=self.pad, mode=self.mode)
         return x
 
-class AutoUNet_half(nn.Module):
+class RecUNet(nn.Module):
     def __init__(self):
         super().__init__()
         
@@ -110,7 +110,7 @@ class AutoUNet_half(nn.Module):
         out = self.outconv(xd32)[:,:,:-1,:-1]
         
         # Damage normalization 
-        damage_norm = F.sigmoid(out[:,0])
-        out_norm = torch.concatenate([damage_norm, out[:,1]], axis=1)
+        damage_norm = F.sigmoid(out[:,[0],:,:])
+        out_norm = torch.cat([damage_norm, out[:,[1],:,:]], axis=1)
 
         return out_norm

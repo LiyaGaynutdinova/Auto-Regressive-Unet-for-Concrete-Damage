@@ -24,7 +24,7 @@ def train(net, loaders, args):
 
     # loss functions
     loss_damage = nn.BCELoss(reduction='none')
-    loss_shrinkage = nn.L1loss(reduction='none')
+    loss_shrinkage = nn.L1Loss(reduction='none')
 
     # optimizer
     optimizer = optim.Adam(net.parameters(), lr = args['lr'])
@@ -49,14 +49,14 @@ def train(net, loaders, args):
             obs_shrinkage = obs_shrinkage.to(args['dev'])
             for n in range(10):
                 if n == 0:
-                    x = torch.concatenate([geometry[n], imp_shrinkage[n], damage[n], damage[n]], axis=1)
+                    x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], damage[:,[n],:,:], damage[:,[n],:,:]], axis=1)
                 else:
-                    x = torch.concatenate([geometry[n], imp_shrinkage[n], y], axis=1)
+                    x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y.detach()], axis=1)
                 # apply the network
                 y = net(x)
                 # calculate mini-batch losses
-                l_dam = loss_damage(y[:,0], damage[n+1]).sum()
-                l_shr = loss_shrinkage(y[:,1].mean(), obs_shrinkage[n+1]).sum()
+                l_dam = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum()
+                l_shr = loss_shrinkage(y[:,1].mean((1,2)), obs_shrinkage[:,n+1]).sum()
                 l = l_dam + l_shr
                 # accumulate the total loss as a regular float number
                 loss_batch = l.detach().item()
@@ -64,7 +64,7 @@ def train(net, loaders, args):
                 # the gradient usually accumulates, need to clear explicitly
                 optimizer.zero_grad()
                 # compute the gradient from the mini-batch loss
-                l.mean().backward()
+                l.backward()
                 # make the optimization step
                 optimizer.step()
             
