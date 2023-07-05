@@ -73,7 +73,7 @@ def train(net, loaders, args):
             x_val = x_val.to(args['dev'])
             label_val = label_val.to(args['dev']).view(-1,1,99,99)
             y_val = net(x_val)
-            L_val += loss(y_val, label_val).detach().item()
+            L_val += loss(y_val, label_val).detach().sum().item()
         losses_train.append(L / n_train)
         losses_val.append(L_val / n_val)
 
