@@ -76,26 +76,27 @@ class dataset_seq(Dataset):
         self.imgs_path = "reduxed_results/geometry/"
         self.label_path = "reduxed_results/damage_fields/"
         self.img_res = 99
-        shrinkage_values = pd.read_csv(self.label_path + 'stiffness_0.csv', sep='\t', usecols=['#shr_imposed[-]']).values.tolist()
-        shrinkage_matrices = [np.full((self.img_res, self.img_res), value) for value in shrinkage_values]
-        shrinkage_matrices_stacked = np.stack(shrinkage_matrices)
-        self.shrinkage = torch.tensor(shrinkage_matrices_stacked)
+        imp_shrinkage_values = pd.read_csv(self.label_path + 'stiffness_0.csv', sep='\t', usecols=['#shr_imposed[-]']).values.tolist()
+        imp_shrinkage_matrices = [np.full((self.img_res, self.img_res), value) for value in imp_shrinkage_values]
+        imp_shrinkage_matrices_stacked = np.stack(imp_shrinkage_matrices)
+        self.imp_shrinkage = torch.tensor(imp_shrinkage_matrices_stacked)
         self.data = []
         for i in range(15000):
-            sequence = {}
-            sequence['geometry'] = self.imgs_path + str(i) + '.npy'
-            sequence['damage'] = []
-            for j in range(10):
-                input = self.label_path + str(i) + '_' + str((j+1)*11) + '.npy'
-                sequence['damage'].append(input) 
-            self.data.append(sequence)       
+            if i != 5000:
+                sequence = {}
+                sequence['geometry'] = self.imgs_path + str(i) + '.npy'
+                sequence['damage'] = []
+                for j in range(10):
+                    input = self.label_path + str(i) + '_' + str((j+1)*11) + '.npy'
+                    sequence['damage'].append(input) 
+                sequence['obs_shrinkage'] = pd.read_csv(self.label_path + f'stiffness_{i}.csv', sep='\t', usecols=['#shr_observed[-]']).values.tolist()
+                self.data.append(sequence)       
 
     def __len__(self):
         return len(self.data)
 
     def __getitem__(self, idx):
         sequence = self.data[idx]
-        shrinkage = self.shrinkage
         img_geometry = np.load(sequence['geometry'])[:-1,:-1]
         img_damage = np.stack([np.load(path)[:-1,:-1] for path in sequence['damage']])
         img_null = np.zeros(((99, 99)))
@@ -114,7 +115,7 @@ class dataset_seq(Dataset):
             tensor = transforms.functional.rotate(tensor, 180)
         elif (k >= 0.5) and (k < 0.75):
             tensor = transforms.functional.rotate(tensor, 270)
-        return tensor[0].view(1,self.img_res,self.img_res), tensor[1:], shrinkage
+        return tensor[0].view(1,self.img_res,self.img_res), tensor[1:], self.imp_shrinkage, torch.tensor([sequence['obs_shrinkage']]).flatten()
 
 def get_loaders(data, batch_size):
     n_train = int(0.8 * data.__len__())

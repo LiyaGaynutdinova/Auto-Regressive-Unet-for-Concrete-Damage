@@ -25,50 +25,50 @@ class CircularPad(nn.Module):
         x = self.circ_pad(x, pad=self.pad, mode=self.mode)
         return x
 
-class AutoUNet(nn.Module):
+class AutoUNet_half(nn.Module):
     def __init__(self):
         super().__init__()
         
         # Encoder
         # input: 100x100x1 with initial circular padding
         
-        self.e11 = nn.Conv2d(2, 128, kernel_size=3, padding=0, groups=2) # output: 98x98x64
-        self.e12 = nn.Conv2d(128, 128, kernel_size=3, padding=0, groups=2) # output: 96x96x64
+        self.e11 = nn.Conv2d(4, 64, kernel_size=3, padding=0, groups=4) # output: 98x98x64
+        self.e12 = nn.Conv2d(64, 64, kernel_size=3, padding=0, groups=4) # output: 96x96x64
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 48x48x64
 
         # input: 48x48x64
-        self.e21 = nn.Conv2d(128, 256, kernel_size=3, padding='same', groups=2) # output: 48x48x128
-        self.e22 = nn.Conv2d(256, 256, kernel_size=3, padding='same', groups=2) # output: 48x48x128
+        self.e21 = nn.Conv2d(64, 128, kernel_size=3, padding='same', groups=4) # output: 48x48x128
+        self.e22 = nn.Conv2d(128, 128, kernel_size=3, padding='same', groups=4) # output: 48x48x128
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 24x24x128
 
         # input: 24x24x128
-        self.e31 = nn.Conv2d(256, 512, kernel_size=3, padding='same', groups=2) # output: 24x24x256
-        self.e32 = nn.Conv2d(512, 512, kernel_size=3, padding='same', groups=2) # output: 24x24x256
+        self.e31 = nn.Conv2d(128, 256, kernel_size=3, padding='same', groups=4) # output: 24x24x256
+        self.e32 = nn.Conv2d(256, 256, kernel_size=3, padding='same', groups=4) # output: 24x24x256
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 12x12x256
 
         # input: 12x12x256
-        self.e41 = nn.Conv2d(512, 1024, kernel_size=3, padding='same', groups=2) # output: 12x12x512
-        self.e42 = nn.Conv2d(1024,1024, kernel_size=3, padding='same', groups=2) # output: 12x12x512
+        self.e41 = nn.Conv2d(256, 512, kernel_size=3, padding='same', groups=4) # output: 12x12x512
+        self.e42 = nn.Conv2d(512, 512, kernel_size=3, padding='same', groups=4) # output: 12x12x512
 
         # Decoder
         
         # input: 12x12x256
-        self.upconv1 = nn.ConvTranspose2d(1024, 512, kernel_size=2, stride=2) # output: 24x24x512
-        self.d11 = nn.Conv2d(1024, 512, kernel_size=3, padding='same')
-        self.d12 = nn.Conv2d(512, 512, kernel_size=3, padding='same')
+        self.upconv1 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2) # output: 24x24x512
+        self.d11 = nn.Conv2d(512, 256, kernel_size=3, padding='same')
+        self.d12 = nn.Conv2d(256, 256, kernel_size=3, padding='same')
 
         # input: 24x24x256
-        self.upconv2 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2) # output: 48x48x128
-        self.d21 = nn.Conv2d(512, 256, kernel_size=3, padding='same')
-        self.d22 = nn.Conv2d(256, 256, kernel_size=3, padding='same')
+        self.upconv2 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2) # output: 48x48x128
+        self.d21 = nn.Conv2d(256, 128, kernel_size=3, padding='same')
+        self.d22 = nn.Conv2d(128, 128, kernel_size=3, padding='same')
 
         # input: 48x48x128
-        self.upconv3 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2) # output: 96x96x128
-        self.d31 = nn.Conv2d(256, 128, kernel_size=3, padding=2) # output: 98x98x128
-        self.d32 = nn.Conv2d(128, 128, kernel_size=3, padding=2) # output: 100x100x128
+        self.upconv3 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2) # output: 96x96x128
+        self.d31 = nn.Conv2d(128, 64, kernel_size=3, padding=2) # output: 98x98x128
+        self.d32 = nn.Conv2d(64, 64, kernel_size=3, padding=2) # output: 100x100x128
 
         # Output layer
-        self.outconv = nn.Conv2d(128, 1, kernel_size=1)
+        self.outconv = nn.Conv2d(64, 2, kernel_size=1)
 
     def forward(self, x):
         
@@ -109,7 +109,8 @@ class AutoUNet(nn.Module):
         # Output layer
         out = self.outconv(xd32)[:,:,:-1,:-1]
         
-        # Normalization
-        out_norm = F.sigmoid(out)
+        # Damage normalization 
+        damage_norm = F.sigmoid(out[:,0])
+        out_norm = torch.concatenate([damage_norm, out[:,1]], axis=1)
 
         return out_norm
