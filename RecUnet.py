@@ -47,23 +47,27 @@ class RecUNet(nn.Module):
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 12x12x256
 
         # input: 12x12x256
-        self.e41 = nn.Conv2d(256, 512, kernel_size=3, padding='same', groups=4) # output: 12x12x512
-        self.e42 = nn.Conv2d(512, 512, kernel_size=3, padding='same', groups=4) # output: 12x12x512
+        self.at0 = nn.Conv2d(256, 256, kernel_size=1, groups=256)               # output: 12x12x256
+        self.e41 = nn.Conv2d(256, 512, kernel_size=3, padding='same', groups=1) # output: 12x12x512
+        self.e42 = nn.Conv2d(512, 512, kernel_size=3, padding='same', groups=1) # output: 12x12x512
 
         # Decoder
         
         # input: 12x12x256
         self.upconv1 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2) # output: 24x24x512
+        self.at1 = nn.Conv2d(512, 512, kernel_size=1, groups=512)
         self.d11 = nn.Conv2d(512, 256, kernel_size=3, padding='same')
         self.d12 = nn.Conv2d(256, 256, kernel_size=3, padding='same')
 
         # input: 24x24x256
         self.upconv2 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2) # output: 48x48x128
+        self.at2 = nn.Conv2d(256, 256, kernel_size=1, groups=256)
         self.d21 = nn.Conv2d(256, 128, kernel_size=3, padding='same')
         self.d22 = nn.Conv2d(128, 128, kernel_size=3, padding='same')
 
         # input: 48x48x128
         self.upconv3 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2) # output: 96x96x128
+        self.at3 = nn.Conv2d(128, 128, kernel_size=1, groups=128)
         self.d31 = nn.Conv2d(128, 64, kernel_size=3, padding=2) # output: 98x98x128
         self.d32 = nn.Conv2d(64, 64, kernel_size=3, padding=2) # output: 100x100x128
 
@@ -87,23 +91,27 @@ class RecUNet(nn.Module):
         xe32 = F.relu(self.e32(xe31))
         xp3 = self.pool3(xe32)
 
-        xe41 = F.relu(self.e41(xp3))
+        xe40 = self.at0(xp3)
+        xe41 = F.relu(self.e41(xe40))
         xe42 = F.relu(self.e42(xe41))
         
         # Decoder
         xu1 = self.upconv1(xe42)
         xu11 = torch.cat([xu1, xe32], dim=1)
-        xd11 = F.relu(self.d11(xu11))
+        xd10 = self.at1(xu11)
+        xd11 = F.relu(self.d11(xd10))
         xd12 = F.relu(self.d12(xd11))
 
         xu2 = self.upconv2(xd12)
         xu22 = torch.cat([xu2, xe22], dim=1)
-        xd21 = F.relu(self.d21(xu22))
+        xd20 = self.at2(xu22)
+        xd21 = F.relu(self.d21(xd20))
         xd22 = F.relu(self.d22(xd21))
 
         xu3 = self.upconv3(xd22)
         xu33 = torch.cat([xu3, xe12], dim=1)
-        xd31 = F.relu(self.d31(xu33))
+        xd30 = self.at3(xu33)
+        xd31 = F.relu(self.d31(xd30))
         xd32 = F.relu(self.d32(xd31))
 
         # Output layer
