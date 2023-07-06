@@ -47,6 +47,7 @@ def train(net, loaders, args):
             damage = damage.to(args['dev'])
             imp_shrinkage = imp_shrinkage.to(args['dev'])
             obs_shrinkage = obs_shrinkage.to(args['dev'])
+            l_seq = 0
             for n in range(10):
                 if n == 0:
                     x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], damage[:,[n],:,:], damage[:,[n],:,:]], axis=1)
@@ -61,6 +62,7 @@ def train(net, loaders, args):
                 # accumulate the total loss as a regular float number
                 loss_batch = l.detach().item()
                 L += loss_batch
+                l_seq += loss_batch
                 # the gradient usually accumulates, need to clear explicitly
                 optimizer.zero_grad()
                 # compute the gradient from the mini-batch loss
@@ -69,7 +71,7 @@ def train(net, loaders, args):
                 optimizer.step()
             
             if i % 100 == 0:
-                print(f'Epoch: {epoch} batch: {i} mean train loss: {loss_batch/len(x) : 5.10f}')
+                print(f'Epoch: {epoch} batch: {i} mean train loss: {l_seq/len(x) : 5.10f}')
                 save_network(net, args['name'] + f'_{epoch}')
 
         # calculate the loss and accuracy of the validation set
@@ -86,12 +88,12 @@ def train(net, loaders, args):
             seq_val = []
             for n in range(10):
                 if n == 0:
-                    x_val = torch.concatenate([geometry[n], imp_shrinkage[n], damage[n], damage[n]], axis=1)
+                    x_val = torch.cat([geometry, imp_shrinkage[:,[n],:,:], damage[:,[n],:,:], damage[:,[n],:,:]], axis=1)
                 else:
-                    x_val = torch.concatenate([geometry[n], imp_shrinkage[n], y], axis=1)
+                    x_val = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y_val.detach()], axis=1)
                 y_val = net(x_val)
-                l_dam_val = loss_damage(y_val[:,0], damage[n+1]).sum().detach().item()
-                l_shr_val = loss_shrinkage(y_val[:,1].mean(), obs_shrinkage[n+1]).sum().detach().item()
+                l_dam_val = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().item()
+                l_shr_val = loss_shrinkage(y[:,1].mean((1,2)), obs_shrinkage[:,n+1]).sum().detach().item()
                 L_val += l_dam_val + l_shr_val
 
                 if j == 0:
