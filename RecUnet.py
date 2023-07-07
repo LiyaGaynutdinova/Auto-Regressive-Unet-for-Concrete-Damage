@@ -37,19 +37,19 @@ class RecUNet(nn.Module):
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 48x48x64
 
         # input: 48x48x64
-        self.e21 = nn.Conv2d(64, 128, kernel_size=3, padding='same', groups=4) # output: 48x48x128
-        self.e22 = nn.Conv2d(128, 128, kernel_size=3, padding='same', groups=4) # output: 48x48x128
+        self.e21 = nn.Conv2d(64, 128, kernel_size=3, padding='same', groups=4, padding_mode = 'circular') # output: 48x48x128
+        self.e22 = nn.Conv2d(128, 128, kernel_size=3, padding='same', groups=4, padding_mode = 'circular') # output: 48x48x128
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 24x24x128
 
         # input: 24x24x128
-        self.e31 = nn.Conv2d(128, 256, kernel_size=3, padding='same', groups=4) # output: 24x24x256
-        self.e32 = nn.Conv2d(256, 256, kernel_size=3, padding='same', groups=4) # output: 24x24x256
+        self.e31 = nn.Conv2d(128, 256, kernel_size=3, padding='same', groups=4, padding_mode = 'circular') # output: 24x24x256
+        self.e32 = nn.Conv2d(256, 256, kernel_size=3, padding='same', groups=4, padding_mode = 'circular') # output: 24x24x256
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 12x12x256
 
         # input: 12x12x256
         self.at0 = nn.Conv2d(256, 256, kernel_size=1, groups=256)               # output: 12x12x256
-        self.e41 = nn.Conv2d(256, 512, kernel_size=3, padding='same', groups=1) # output: 12x12x512
-        self.e42 = nn.Conv2d(512, 512, kernel_size=3, padding='same', groups=1) # output: 12x12x512
+        self.e41 = nn.Conv2d(256, 512, kernel_size=3, padding='same', groups=1, padding_mode = 'circular') # output: 12x12x512
+        self.e42 = nn.Conv2d(512, 512, kernel_size=3, padding='same', groups=1, padding_mode = 'circular') # output: 12x12x512
 
         # Decoder
         

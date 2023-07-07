@@ -115,6 +115,10 @@ class dataset_seq(Dataset):
             tensor = transforms.functional.rotate(tensor, 180)
         elif (k >= 0.5) and (k < 0.75):
             tensor = transforms.functional.rotate(tensor, 270)
+        roll_x = np.random.randint(self.img_res)
+        roll_y = np.random.randint(self.img_res)
+        tensor = torch.roll(tensor, roll_x, -2)
+        tensor = torch.roll(tensor, roll_y, -1)
         return tensor[0].view(1,self.img_res,self.img_res), tensor[1:], self.imp_shrinkage, torch.tensor([sequence['obs_shrinkage']], dtype=torch.float).flatten()
 
 def get_loaders(data, batch_size):

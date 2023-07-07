@@ -11,7 +11,7 @@ def plot_outputs(x, y, fname):
         axs.flat[i].imshow(x[i].detach().cpu().numpy(), cmap='Greys')
         axs.flat[i].set_axis_off()
     for i in range(n_samples, 2*n_samples):
-        axs.flat[i].imshow(y[i-n_samples].detach().cpu().numpy(), cmap='Greys')
+        axs.flat[i].imshow(y[i-n_samples].numpy(), cmap='Greys')
         axs.flat[i].set_axis_off()
     plt.savefig(fname)
     plt.close()
@@ -104,12 +104,13 @@ def train(net, loaders, args):
 
                 if j == 0:
                     seq_val.append(y_val[0,0].detach().cpu())
+            if j == 0:
+                plot_outputs(damage[0,1:], seq_val, args['name'] + f'_{epoch}')
         
         losses_train.append(L / n_train)
         losses_val.append(L_val / n_val)
 
         print(f'Epoch: {epoch} mean train loss: {L / n_train : 5.10f} mean val. rec. loss: {L_val / n_val : 5.10f}')
-        save_network(net, args['name'] + f'_{epoch}')
-        plot_outputs(damage[0,1:], seq_val, args['name'] + f'_{epoch}')
+        save_network(net, args['name'] + f'_{epoch}')        
 
     return losses_train, losses_val
