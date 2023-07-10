@@ -32,18 +32,18 @@ class RecUNet(nn.Module):
         # Encoder
         # input: 100x100x1 with initial circular padding
         
-        self.e11 = nn.Conv2d(4, 64, kernel_size=3, padding=0, groups=4) # output: 98x98x64
-        self.e12 = nn.Conv2d(64, 64, kernel_size=3, padding=0, groups=4) # output: 96x96x64
+        self.e11 = nn.Conv2d(4, 64, kernel_size=3, padding=0, groups=2) # output: 98x98x64
+        self.e12 = nn.Conv2d(64, 64, kernel_size=3, padding=0, groups=2) # output: 96x96x64
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 48x48x64
 
         # input: 48x48x64
-        self.e21 = nn.Conv2d(64, 128, kernel_size=3, padding='same', groups=4, padding_mode = 'circular') # output: 48x48x128
-        self.e22 = nn.Conv2d(128, 128, kernel_size=3, padding='same', groups=4, padding_mode = 'circular') # output: 48x48x128
+        self.e21 = nn.Conv2d(64, 128, kernel_size=3, padding='same', groups=2, padding_mode = 'circular') # output: 48x48x128
+        self.e22 = nn.Conv2d(128, 128, kernel_size=3, padding='same', groups=2, padding_mode = 'circular') # output: 48x48x128
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 24x24x128
 
         # input: 24x24x128
-        self.e31 = nn.Conv2d(128, 256, kernel_size=3, padding='same', groups=4, padding_mode = 'circular') # output: 24x24x256
-        self.e32 = nn.Conv2d(256, 256, kernel_size=3, padding='same', groups=4, padding_mode = 'circular') # output: 24x24x256
+        self.e31 = nn.Conv2d(128, 256, kernel_size=3, padding='same', groups=2, padding_mode = 'circular') # output: 24x24x256
+        self.e32 = nn.Conv2d(256, 256, kernel_size=3, padding='same', groups=2, padding_mode = 'circular') # output: 24x24x256
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 12x12x256
 
         # input: 12x12x256
