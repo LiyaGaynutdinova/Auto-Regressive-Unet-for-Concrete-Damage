@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from save_load import *
 
 def plot_outputs(x, y, fname):
-    n_samples = len(x)
+    n_samples = 10
     fig, axs = plt.subplots(nrows=2, ncols=n_samples, figsize=(n_samples, 2), dpi=200)
     for i in range(n_samples):
         axs.flat[i].imshow(x[i].detach().cpu().numpy(), cmap='Greys')
