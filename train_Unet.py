@@ -87,3 +87,39 @@ def train(net, loaders, args):
     plot_outputs(label_val, y_val, args['name'] + f'_{epoch}')
 
     return losses_train, losses_val
+
+def test(net, loaders, args):
+    net.to(args['dev'])
+
+    if args['dev'] == "cuda":
+        torch.cuda.empty_cache() 
+
+    loss_damage = nn.BCELoss(reduction='none')
+    loss_shrinkage = nn.L1Loss(reduction='none')
+
+    L_dam = []
+    L_shr = []
+
+    for i, (geometry, damage, imp_shrinkage, obs_shrinkage) in enumerate(loaders['test']):
+        geometry = geometry.to(args['dev'])
+        damage = damage.to(args['dev'])
+        imp_shrinkage = imp_shrinkage.to(args['dev'])
+        obs_shrinkage = obs_shrinkage.to(args['dev'])
+        l_seq_dam = []
+        l_seq_shr = []
+        for n in range(10):
+            if n == 0:
+                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], damage[:,[n],:,:], damage[:,[n],:,:]], axis=1)
+            else:
+                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y.detach()], axis=1)
+            # apply the network
+            y = net(x)
+            # calculate mini-batch losses
+            l_dam = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu().numpy()
+            l_shr = loss_shrinkage(y[:,1].mean((1,2)), obs_shrinkage[:,n+1]).sum().detach().cpu().numpy()
+            l_seq_dam.append(l_dam)
+            l_seq_shr.append(l_shr)
+        L_dam.append(l_seq_dam)
+        L_shr.append(l_seq_shr)
+
+    return L_dam, L_shr
