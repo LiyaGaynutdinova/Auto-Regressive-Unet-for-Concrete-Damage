@@ -58,7 +58,7 @@ def train(net, loaders, args):
                 y = net(x)
                 # calculate mini-batch losses
                 l_dam = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum()
-                l_shr = loss_shrinkage(y[:,1].mean((1,2)), obs_shrinkage[:,n+1]).sum()
+                l_shr = 1000 * loss_shrinkage(y[:,1].mean((1,2)), obs_shrinkage[:,n+1]).sum()
                 l = l_dam + l_shr
                 # accumulate the total loss as a regular float number
                 loss_batch = l.detach().item()
