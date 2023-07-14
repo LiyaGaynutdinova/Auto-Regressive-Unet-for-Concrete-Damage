@@ -150,7 +150,7 @@ def test(net, loaders, args):
             l_dam = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu().numpy()         
             l_shr = loss_shrinkage(y[:,1].mean((1,2)), obs_shrinkage[:,n+1]).sum().detach().cpu().numpy()
             if n>0:
-                l_dam /= damage[:,[n+1],:,:].sum().detach().cpu().numpy()
+                #l_dam /= damage[:,[n+1],:,:].sum().detach().cpu().numpy()
                 l_shr /= obs_shrinkage[:,n+1].abs().sum().detach().cpu().numpy()
             l_seq_dam.append(l_dam)
             l_seq_shr.append(l_shr)
