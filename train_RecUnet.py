@@ -58,7 +58,7 @@ def train(net, loaders, args):
                 y = net(x)
                 # calculate mini-batch losses
                 l_dam = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum()
-                l_shr = 1000 * loss_shrinkage(y[:,1].mean((1,2)), obs_shrinkage[:,n+1]).sum()
+                l_shr = loss_shrinkage((y[:,[1],:,:]*imp_shrinkage[:,[n],:,:].detach()).mean((1,2,3)), obs_shrinkage[:,n+1]).sum()
                 l = l_dam + l_shr
                 # accumulate the total loss as a regular float number
                 loss_batch = l.detach().item()
@@ -99,7 +99,7 @@ def train(net, loaders, args):
                     x_val = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y_val.detach()], axis=1)
                 y_val = net(x_val)
                 l_dam_val = loss_damage(y_val[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().item()
-                l_shr_val = loss_shrinkage(y_val[:,1].mean((1,2)), obs_shrinkage[:,n+1]).sum().detach().item()
+                l_shr_val = loss_shrinkage((y_val[:,[1],:,:]*imp_shrinkage[:,[n],:,:].detach()).mean((1,2,3)), obs_shrinkage[:,n+1]).sum().detach().item()
                 L_val += l_dam_val + l_shr_val
 
                 if j == 0:
@@ -148,7 +148,7 @@ def test(net, loaders, args):
             y = net(x)
             # calculate mini-batch losses
             l_dam = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu().numpy()         
-            l_shr = loss_shrinkage(y[:,1].mean((1,2)), obs_shrinkage[:,n+1]).sum().detach().cpu().numpy()
+            l_shr = loss_shrinkage(y[:,[1],:,].mean((1,2,3))*imp_shrinkage[:,[n],:,:].detach(), obs_shrinkage[:,n+1]).sum().detach().cpu().numpy()
             if n>0:
                 #l_dam /= damage[:,[n+1],:,:].sum().detach().cpu().numpy()
                 l_shr /= obs_shrinkage[:,n+1].abs().sum().detach().cpu().numpy()
