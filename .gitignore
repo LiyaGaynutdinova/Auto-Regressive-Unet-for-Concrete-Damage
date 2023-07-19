@@ -6466,3 +6466,6 @@ reduxed_results/reduxed_results/damage_fields/0_11.npy
 *.npy
 *.npy
 *.csv
+RecUnet_MLP_0
+RecUnet_MLP_1
+RecUnet_all_0

@@ -90,6 +90,7 @@ class dataset_seq(Dataset):
                     input = self.label_path + str(i) + '_' + str((j+1)*11) + '.npy'
                     sequence['damage'].append(input) 
                 sequence['obs_shrinkage'] = pd.read_csv(self.label_path + f'stiffness_{i}.csv', sep='\t', usecols=['#shr_observed[-]']).values.tolist()
+                sequence['stiffness'] = pd.read_csv(self.label_path + f'stiffness_{i}.csv', sep='\t', usecols=['#stiffness[MPa]']).values.tolist()
                 self.data.append(sequence)       
 
     def __len__(self):
@@ -119,7 +120,11 @@ class dataset_seq(Dataset):
         roll_y = np.random.randint(self.img_res)
         tensor = torch.roll(tensor, roll_x, -2)
         tensor = torch.roll(tensor, roll_y, -1)
-        return tensor[0].view(1,self.img_res,self.img_res), tensor[1:], self.imp_shrinkage, torch.tensor([sequence['obs_shrinkage']], dtype=torch.float).flatten()
+        return (tensor[0].view(1,self.img_res,self.img_res), 
+                tensor[1:], 
+                self.imp_shrinkage, 
+                torch.tensor([sequence['obs_shrinkage']], dtype=torch.float).flatten(),
+                torch.tensor([sequence['stiffness']], dtype=torch.float).flatten())
 
 def get_loaders(data, batch_size):
     n_train = int(0.8 * data.__len__())

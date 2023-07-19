@@ -42,7 +42,7 @@ def train(net, loaders, args):
         L = 0
         net.train()
         # loop fetching a mini-batch of data at each iteration
-        for i, (geometry, damage, imp_shrinkage, obs_shrinkage) in enumerate(loaders['train']):
+        for i, (geometry, damage, imp_shrinkage, obs_shrinkage, _) in enumerate(loaders['train']):
             geometry = geometry.to(args['dev'])
             damage = damage.to(args['dev'])
             imp_shrinkage = imp_shrinkage.to(args['dev'])
@@ -87,7 +87,7 @@ def train(net, loaders, args):
         L_val = 0
         seq_val = []
 
-        for j, (geometry, damage, imp_shrinkage, obs_shrinkage) in enumerate(loaders['val']):
+        for j, (geometry, damage, imp_shrinkage, obs_shrinkage, _) in enumerate(loaders['val']):
             geometry = geometry.to(args['dev'])
             damage = damage.to(args['dev'])
             imp_shrinkage = imp_shrinkage.to(args['dev'])

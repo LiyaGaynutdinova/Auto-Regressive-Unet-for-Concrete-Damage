@@ -32,7 +32,7 @@ class RecUNet(nn.Module):
         # Encoder
         # input: 100x100x1 with initial circular padding
         
-        self.e11 = nn.Conv2d(4, 64, kernel_size=3, padding=0) # output: 98x98x64
+        self.e11 = nn.Conv2d(5, 64, kernel_size=3, padding=0) # output: 98x98x64
         self.e12 = nn.Conv2d(64, 64, kernel_size=3, padding=0) # output: 96x96x64
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 48x48x64
 
@@ -47,7 +47,6 @@ class RecUNet(nn.Module):
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 12x12x256
 
         # input: 12x12x256
-        self.at0 = nn.Conv2d(256, 256, kernel_size=1, groups=256)               # output: 12x12x256
         self.e41 = nn.Conv2d(256, 512, kernel_size=3, padding='same', padding_mode = 'circular') # output: 12x12x512
         self.e42 = nn.Conv2d(512, 512, kernel_size=3, padding='same', padding_mode = 'circular') # output: 12x12x512
 
@@ -69,7 +68,7 @@ class RecUNet(nn.Module):
         self.d32 = nn.Conv2d(64, 64, kernel_size=3, padding=2) # output: 100x100x128
 
         # Output layer
-        self.outconv = nn.Conv2d(64, 2, kernel_size=1)
+        self.outconv = nn.Conv2d(64, 3, kernel_size=1)
 
     def forward(self, x):
         
@@ -111,7 +110,6 @@ class RecUNet(nn.Module):
         out = self.outconv(xd32)[:,:,:-1,:-1]
         
         # Damage normalization 
-        damage_norm = F.sigmoid(out[:,[0],:,:])
-        out_norm = torch.cat([damage_norm, out[:,[1],:,:]], axis=1)
+        damage_norm = torch.sigmoid(out)
 
-        return out_norm
+        return damage_norm
