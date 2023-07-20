@@ -31,44 +31,45 @@ class RecUNet(nn.Module):
         
         # Encoder
         # input: 100x100x1 with initial circular padding
-        
-        self.e11 = nn.Conv2d(5, 64, kernel_size=3, padding=0) # output: 98x98x64
-        self.e12 = nn.Conv2d(64, 64, kernel_size=3, padding=0) # output: 96x96x64
-        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 48x48x64
+        w = 64
 
-        # input: 48x48x64
-        self.e21 = nn.Conv2d(64, 128, kernel_size=3, padding='same', padding_mode = 'circular') # output: 48x48x128
-        self.e22 = nn.Conv2d(128, 128, kernel_size=3, padding='same', padding_mode = 'circular') # output: 48x48x128
-        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 24x24x128
+        self.e11 = nn.Conv2d(5, w, kernel_size=3, padding=0) # output: 98x98xw
+        self.e12 = nn.Conv2d(w, w, kernel_size=3, padding=0) # output: 96x96xw
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 48x48xw
 
-        # input: 24x24x128
-        self.e31 = nn.Conv2d(128, 256, kernel_size=3, padding='same', padding_mode = 'circular') # output: 24x24x256
-        self.e32 = nn.Conv2d(256, 256, kernel_size=3, padding='same', padding_mode = 'circular') # output: 24x24x256
-        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 12x12x256
+        # input: 48x48xw
+        self.e21 = nn.Conv2d(w, 2*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 48x48x2w
+        self.e22 = nn.Conv2d(2*w, 2*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 48x48x2w
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 24x24x2w
 
-        # input: 12x12x256
-        self.e41 = nn.Conv2d(256, 512, kernel_size=3, padding='same', padding_mode = 'circular') # output: 12x12x512
-        self.e42 = nn.Conv2d(512, 512, kernel_size=3, padding='same', padding_mode = 'circular') # output: 12x12x512
+        # input: 24x24x2w
+        self.e31 = nn.Conv2d(2*w, 4*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 24x24x4w
+        self.e32 = nn.Conv2d(4*w, 4*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 24x24x4w
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 12x12x4w
+
+        # input: 12x12x4w
+        self.e41 = nn.Conv2d(4*w, 8*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 12x12x8w
+        self.e42 = nn.Conv2d(8*w, 8*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 12x12x8w
 
         # Decoder
         
-        # input: 12x12x256
-        self.upconv1 = nn.ConvTranspose2d(512, 256, kernel_size=2, stride=2) # output: 24x24x512
-        self.d11 = nn.Conv2d(512, 256, kernel_size=3, padding='same')
-        self.d12 = nn.Conv2d(256, 256, kernel_size=3, padding='same')
+        # input: 12x12x8w
+        self.upconv1 = nn.ConvTranspose2d(8*w, 4*w, kernel_size=2, stride=2) # output: 24x24x4w
+        self.d11 = nn.Conv2d(8*w, 4*w, kernel_size=3, padding='same')
+        self.d12 = nn.Conv2d(4*w, 4*w, kernel_size=3, padding='same')
 
         # input: 24x24x256
-        self.upconv2 = nn.ConvTranspose2d(256, 128, kernel_size=2, stride=2) # output: 48x48x128
-        self.d21 = nn.Conv2d(256, 128, kernel_size=3, padding='same')
-        self.d22 = nn.Conv2d(128, 128, kernel_size=3, padding='same')
+        self.upconv2 = nn.ConvTranspose2d(4*w, 2*w, kernel_size=2, stride=2) # output: 48x48x2w
+        self.d21 = nn.Conv2d(4*w, 2*w, kernel_size=3, padding='same')
+        self.d22 = nn.Conv2d(2*w, 2*w, kernel_size=3, padding='same')
 
         # input: 48x48x128
-        self.upconv3 = nn.ConvTranspose2d(128, 64, kernel_size=2, stride=2) # output: 96x96x128
-        self.d31 = nn.Conv2d(128, 64, kernel_size=3, padding=2) # output: 98x98x128
-        self.d32 = nn.Conv2d(64, 64, kernel_size=3, padding=2) # output: 100x100x128
+        self.upconv3 = nn.ConvTranspose2d(2*w, w, kernel_size=2, stride=2) # output: 96x96xw
+        self.d31 = nn.Conv2d(2*w, w, kernel_size=3, padding=2) # output: 98x98xw
+        self.d32 = nn.Conv2d(w, w, kernel_size=3, padding=2) # output: 100x100xw
 
         # Output layer
-        self.outconv = nn.Conv2d(64, 3, kernel_size=1)
+        self.outconv = nn.Conv2d(w, 3, kernel_size=1)
 
     def forward(self, x):
         
@@ -110,6 +111,7 @@ class RecUNet(nn.Module):
         out = self.outconv(xd32)[:,:,:-1,:-1]
         
         # Damage normalization 
-        damage_norm = torch.sigmoid(out)
+        out[:,[0,2],:,:] = torch.sigmoid(out[:,[0,2],:,:])
+        out[:,[1],:,:] = torch.tanh(out[:,[1],:,:]) + 1.
 
-        return damage_norm
+        return out

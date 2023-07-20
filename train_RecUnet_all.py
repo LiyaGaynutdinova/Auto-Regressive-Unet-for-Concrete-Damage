@@ -94,7 +94,6 @@ def train(net, loaders, args):
         L_val = 0
 
         for j, (geometry, damage, imp_shrinkage, obs_shrinkage, stiffness) in enumerate(loaders['val']):
-            print(j)
             seq_val = []
             geometry = geometry.to(args['dev'])
             damage = damage.to(args['dev'])
@@ -150,7 +149,6 @@ def test(net, loaders, args):
     seq_test_stiff = []
 
     for i, (geometry, damage, imp_shrinkage, obs_shrinkage, stiffness) in enumerate(loaders['test']):
-        print(i)
         geometry = geometry.to(args['dev'])
         damage = damage.to(args['dev'])
         imp_shrinkage = imp_shrinkage.to(args['dev'])
