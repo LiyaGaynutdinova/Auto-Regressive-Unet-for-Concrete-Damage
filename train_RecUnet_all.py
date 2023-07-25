@@ -168,6 +168,8 @@ def test(net, loaders, args):
                 x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y.detach()], axis=1)
             # apply the network
             y = net(x)
+            #y[:,[0],:,:] = 0.
+            #y[:,[2],:,:] = 0.
             # calculate mini-batch losses
             l_dam = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu().numpy()
             l_shr = loss_shrinkage((y[:,[1],:,:]*imp_shrinkage[:,[n],:,:].detach()).mean((1,2,3)), 
