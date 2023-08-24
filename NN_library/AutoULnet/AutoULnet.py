@@ -29,7 +29,7 @@ class ULNet(nn.Module):
         
         # Encoder
         # input: 100x100x1 with initial circular padding
-        w = 64
+        w = 32
 
         self.e11 = nn.Conv2d(3, w, kernel_size=3, padding=0) # output: 98x98xw
         self.e12 = nn.Conv2d(w, w, kernel_size=3, padding=0) # output: 96x96xw
