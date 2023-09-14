@@ -26,6 +26,7 @@ class CircularPad(nn.Module):
         return x
 
 class AutoUNet(nn.Module):
+    # Simple autofeeding U-Net with damage prediction only
     def __init__(self):
         super().__init__()
         

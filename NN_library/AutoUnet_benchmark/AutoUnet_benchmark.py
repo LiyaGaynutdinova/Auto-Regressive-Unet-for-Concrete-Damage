@@ -26,6 +26,7 @@ class CircularPad(nn.Module):
         return x
 
 class AutoUNet(nn.Module):
+    # Autofeeding U-Net for damage, plus prediction for stiffness and shrinkage
     def __init__(self, w=64):
         super().__init__()
         
@@ -33,7 +34,7 @@ class AutoUNet(nn.Module):
         # input: 100x100x1 with initial circular padding
         # w = 64
 
-        self.e11 = nn.Conv2d(3, w, kernel_size=3, padding=0) # output: 98x98xw
+        self.e11 = nn.Conv2d(5, w, kernel_size=3, padding=0) # output: 98x98xw
         self.e12 = nn.Conv2d(w, w, kernel_size=3, padding=0) # output: 96x96xw
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 48x48xw
 
@@ -108,12 +109,6 @@ class AutoUNet(nn.Module):
         xd32 = F.relu(self.d32(xd31))
 
         # Output layer
-        out1 = self.outconv(xd32)[:,:,:-1,:-1]
-        
-        # Damage normalization 
-        out2a = torch.sigmoid(out1[:,:2,:,:])
-        out2b = -F.relu(out1[:,:2,:,:])
+        out = torch.sigmoid(self.outconv(xd32)[:,:,:-1,:-1])
 
-        out3 = torch.cat([out2a, out2b], axis=1)
-
-        return out3
+        return out

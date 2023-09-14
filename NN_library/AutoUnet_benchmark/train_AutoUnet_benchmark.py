@@ -54,15 +54,17 @@ def train(net, loaders, args):
                 if n == 0:
                     x = torch.cat([geometry, 
                                    imp_shrinkage[:,[n],:,:], 
-                                   damage[:,[n],:,:]], axis=1)
+                                   damage[:,[n],:,:],
+                                   torch.ones_like(geometry, device=args['dev']),
+                                   torch.zeros_like(geometry, device=args['dev'])], axis=1)
                 else:
-                    x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y[:,[0],:,:].detach()], axis=1)
+                    x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y.detach()], axis=1)
                 # apply the network
                 y = net(x)
                 # calculate mini-batch losses
                 l_dam = loss_dam(y[:,[0],:,:], damage[:,[n+1],:,:]).sum()
                 l_stiff = loss((y[:,1,:,:].mean((1,2))*stiffness[:,0].detach()), stiffness[:,n+1]).sum()
-                l_shr = (loss(y[:,2,:,:].mean((1,2)), obs_shrinkage[:,n+1]) / torch.abs(imp_shrinkage[:,n+1,0,0].detach())).sum()
+                l_shr = (loss(y[:,2,:,:].mean((1,2))*imp_shrinkage[:,-1,0,0].detach(), obs_shrinkage[:,n+1]) / torch.abs(imp_shrinkage[:,n+1,0,0].detach())).sum()
                 l = l_dam + l_shr + l_stiff
                 # accumulate the total loss as a regular float number
                 loss_batch = l.detach().item()
@@ -101,14 +103,16 @@ def train(net, loaders, args):
                 if n == 0:
                     x = torch.cat([geometry, 
                                    imp_shrinkage[:,[n],:,:], 
-                                   damage[:,[n],:,:]], axis=1)
+                                   damage[:,[n],:,:],
+                                   torch.ones_like(geometry, device=args['dev']),
+                                   torch.zeros_like(geometry, device=args['dev'])], axis=1)
                 else:
-                    x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y[:,[0],:,:].detach()], axis=1)
+                    x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y.detach()], axis=1)
                 y = net(x).detach()
                 l_dam_val = loss_dam(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu()
                 l_stiff_val = loss((y[:,1,:,:].mean((1,2))*stiffness[:,0].detach()), 
                                              stiffness[:,n+1]).sum().detach().cpu()
-                l_shr_val = (loss(y[:,2,:,:].mean((1,2)), obs_shrinkage[:,n+1]) / imp_shrinkage[:,n+1,0,0].detach().abs()).sum().detach().cpu()
+                l_shr_val = (loss(y[:,2,:,:].mean((1,2))*imp_shrinkage[:,-1,0,0].detach(), obs_shrinkage[:,n+1]) / torch.abs(imp_shrinkage[:,n+1,0,0].detach())).sum().detach().cpu()
                 L_val += l_dam_val + l_shr_val + l_stiff_val
 
                 if j == 0:
@@ -164,18 +168,20 @@ def test(net, loaders, args):
         l_seq_stiff = []
         for n in range(10):
             if n == 0:
-                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], damage[:,[n],:,:]], axis=1)
+                x = torch.cat([geometry, 
+                               imp_shrinkage[:,[n],:,:], 
+                               damage[:,[n],:,:],
+                               torch.ones_like(geometry, device=args['dev']),
+                               torch.zeros_like(geometry, device=args['dev'])], axis=1)
             else:
-                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y[:,[0],:,:].detach()], axis=1)
+                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y.detach()], axis=1)
             # apply the network
             y = net(x)
-            #y[:,[0],:,:] = 0.
-            #y[:,[2],:,:] = 0.
             # calculate mini-batch losses
             l_dam = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu().numpy()
             l_stiff = loss_shrinkage((y[:,1,:,:].mean((1,2))*stiffness[:,0].detach()), 
                                              stiffness[:,n+1]).sum().detach().cpu().numpy()
-            l_shr = loss_shrinkage((y[:,2,:,:].mean((1,2))*imp_shrinkage[:,n,0,0].detach()), 
+            l_shr = loss_shrinkage((y[:,2,:,:].mean((1,2))*imp_shrinkage[:,-1,0,0].detach()), 
                                            obs_shrinkage[:,n+1]).sum().detach().cpu().numpy()
             l_seq_dam.append(l_dam)
             l_seq_stiff.append(l_stiff)
