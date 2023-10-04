@@ -73,15 +73,21 @@ class dataset(Dataset):
 
 class dataset_seq(Dataset):
     def __init__(self, type=None):
-        self.imgs_path = "reduxed_results/geometry/"
-        self.label_path = "reduxed_results/damage_fields/"
+        if type=='weird':
+            self.imgs_path = "reduxed_results/weird_geometry/geometry/"
+            self.label_path = "reduxed_results/weird_geometry/damage_fields/"
+            N = 11           
+        else:
+            self.imgs_path = "reduxed_results/geometry/"
+            self.label_path = "reduxed_results/damage_fields/"
+            N = 15000
         self.img_res = 99
         imp_shrinkage_values = pd.read_csv(self.label_path + 'stiffness_0.csv', sep='\t', usecols=['#shr_imposed[-]']).values.tolist()
         imp_shrinkage_matrices = [np.full((self.img_res, self.img_res), value) for value in imp_shrinkage_values]
         imp_shrinkage_matrices_stacked = np.stack(imp_shrinkage_matrices)
         self.imp_shrinkage = torch.tensor(imp_shrinkage_matrices_stacked, dtype=torch.float)
         self.data = []
-        for i in range(15000):
+        for i in range(N):
             if i != 5000:
                 sequence = {}
                 sequence['geometry'] = self.imgs_path + str(i) + '.npy'
