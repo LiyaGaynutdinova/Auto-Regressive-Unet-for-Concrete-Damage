@@ -131,7 +131,30 @@ class dataset_seq(Dataset):
                 self.imp_shrinkage, 
                 torch.tensor([sequence['obs_shrinkage']], dtype=torch.float).flatten(),
                 torch.tensor([sequence['stiffness']], dtype=torch.float).flatten())
+    
+class dataset_big(Dataset):
+    def __init__(self, type=None):
+        self.imgs_path = "C:/Users/Jorge/OneDrive/ModularOptimization/Concrete/level_set_big/"
+        N = 100000
+        self.img_res = 99
+        imp_shrinkage_values = pd.read_csv('reduxed_results/damage_fields/stiffness_0.csv', sep='\t', usecols=['#shr_imposed[-]']).values.tolist()
+        imp_shrinkage_matrices = [np.full((self.img_res, self.img_res), value) for value in imp_shrinkage_values]
+        imp_shrinkage_matrices_stacked = np.stack(imp_shrinkage_matrices)
+        self.imp_shrinkage = torch.tensor(imp_shrinkage_matrices_stacked, dtype=torch.float)
+        self.data = []
+        for i in range(N):
+            sequence = self.imgs_path + str(i) + '.npy'
+            self.data.append(sequence)       
 
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        sequence = self.data[idx]
+        img_geometry = 1.-np.load(sequence)[:-1,:-1]
+        tensor = torch.tensor(img_geometry, dtype=torch.float).view(1,99,99)
+        return tensor, self.imp_shrinkage
+    
 def get_loaders(data, batch_size):
     n_train = int(0.8 * data.__len__())
     n_test = (data.__len__() - n_train) // 2
@@ -160,3 +183,4 @@ def get_loaders_manual(data, batch_size):
     test_loader = DataLoader(test_set, batch_size = batch_size)
     loaders = {'train' : train_loader, 'val' : val_loader, 'test' : test_loader}
     return loaders
+
