@@ -184,3 +184,47 @@ def get_loaders_manual(data, batch_size):
     loaders = {'train' : train_loader, 'val' : val_loader, 'test' : test_loader}
     return loaders
 
+class dataset_new(Dataset):
+    def __init__(self, type=None):
+        self.imgs_path = "reduxed_results/new_geometry/geometry/"
+        self.label_path = "reduxed_results/new_geometry/damage_fields/"
+        N = 15000          
+        self.img_res = 99
+        self.imp_shrinkage = [np.zeros((99, 99))]
+        for i in range(11, 121, 11):
+            self.imp_shrinkage.append(np.flipud(np.load(f'reduxed_results/new_geometry/shrinkage_{i}.npy')[:-1,:-1]))
+        self.imp_shrinkage = np.stack(self.imp_shrinkage)
+        self.imp_shrinkage = torch.tensor(self.imp_shrinkage, dtype=torch.float)
+        self.data = []
+        for i in range(N):
+            sequence = {}
+            sequence['geometry'] = self.imgs_path + str(i) + '.npy'
+            sequence['damage'] = []
+            for j in range(10):
+                input = self.label_path + str(i) + '_' + str((j+1)*11) + '.npy'
+                sequence['damage'].append(input) 
+            sequence['obs_shrinkage'] = pd.read_csv(self.label_path + f'stiffness_{i}.csv', sep='\t', usecols=['#axial_shrinkage[-]']).values.tolist()
+            sequence['stiffness'] = pd.read_csv(self.label_path + f'stiffness_{i}.csv', sep='\t', usecols=['#stiffness[MPa]']).values.tolist()
+            self.data.append(sequence)       
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        sequence = self.data[idx]
+        img_geometry = np.load(sequence['geometry'])
+        img_damage = np.stack([np.load(path) for path in sequence['damage']])
+        img_null = np.zeros(((99, 99)))
+        img_stacked = np.stack([img_geometry, img_null])
+        img_stacked = np.concatenate([img_stacked, img_damage])
+        tensor = torch.tensor(img_stacked, dtype=torch.float)
+        transform = transforms.RandomHorizontalFlip(p=0.5)
+        tensor = transform(tensor)
+        k = np.random.rand()
+        roll = np.random.randint(self.img_res)
+        tensor = torch.roll(tensor, roll, -1)
+        return (tensor[0].view(1, self.img_res, self.img_res), #geometry
+                tensor[1:], #damage
+                self.imp_shrinkage, #shrinkage
+                torch.tensor([sequence['obs_shrinkage']], dtype=torch.float).flatten(),
+                torch.tensor([sequence['stiffness']], dtype=torch.float).flatten())

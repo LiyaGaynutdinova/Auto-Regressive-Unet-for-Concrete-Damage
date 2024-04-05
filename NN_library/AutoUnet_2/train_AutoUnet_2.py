@@ -24,7 +24,6 @@ def train(net, loaders, args):
 
     # loss functions
     loss_dam = nn.MSELoss(reduction='none')
-    loss = nn.L1Loss(reduction='none')
 
     # optimizer
     optimizer = optim.Adam(net.parameters(), lr = args['lr'])
@@ -42,27 +41,26 @@ def train(net, loaders, args):
         L = 0
         net.train()
         # loop fetching a mini-batch of data at each iteration
-        for i, (geometry, damage, imp_shrinkage, _, stiffness) in enumerate(loaders['train']):
+        for i, (geometry, damage, imp_shrinkage, _, _) in enumerate(loaders['train']):
             geometry = geometry.to(args['dev'])
             damage = damage.to(args['dev'])
             imp_shrinkage = imp_shrinkage.to(args['dev'])
-            stiffness = stiffness.to(args['dev'])
             l_seq = 0
             seq = []
             for n in range(10):
                 if n == 0:
                     x = torch.cat([geometry, 
-                                   imp_shrinkage[:,[n],:,:], 
-                                   damage[:,[n],:,:],
-                                   torch.ones_like(geometry, device=args['dev'])], axis=1)
+                                   (imp_shrinkage[:,[n],:,:]+imp_shrinkage[:,[n+1],:,:])/2, 
+                                   damage[:,[n],:,:]], axis=1)
                 else:
-                    x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y.detach()], axis=1)
+                    x = torch.cat([geometry, (imp_shrinkage[:,[n],:,:]+imp_shrinkage[:,[n+1],:,:])/2, y.detach()], axis=1)
                 # apply the network
                 y = net(x)
+                l = 0.5*loss_dam(y, (damage[:,[n],:,:]+damage[:,[n+1],:,:])/2).sum()
+                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:], y.detach()], axis=1)
+                y = net(x)
                 # calculate mini-batch losses
-                l_dam = loss_dam(y[:,[0],:,:], damage[:,[n+1],:,:]).sum()
-                l_stiff = (loss((y[:,1,:,:].mean((1,2))*stiffness[:,0].detach()), stiffness[:,n+1]) / stiffness[:,0].detach()).sum()
-                l = l_dam + l_stiff
+                l += loss_dam(y, damage[:,[n+1],:,:]).sum()
                 # accumulate the total loss as a regular float number
                 loss_batch = l.detach().item()
                 L += loss_batch
@@ -74,10 +72,10 @@ def train(net, loaders, args):
                 # make the optimization step
                 optimizer.step()
 
-                if i % 100 == 0:
+                if i % 200 == 0:
                     seq.append(y[0,0].detach().cpu())
             
-            if i % 100 == 0:
+            if i % 200 == 0:
                 print(f'Epoch: {epoch} batch: {i} mean train loss: {l_seq/len(x) : 5.10f}')
                 save_network(net, args['name'] + f'_{epoch}')
                 plot_outputs(damage[0,1:], seq, args['name'] + f'_{epoch}')
@@ -89,24 +87,22 @@ def train(net, loaders, args):
         
         L_val = 0
 
-        for j, (geometry, damage, imp_shrinkage, _, stiffness) in enumerate(loaders['val']):
+        for j, (geometry, damage, imp_shrinkage, _, _) in enumerate(loaders['val']):
             seq_val = []
             geometry = geometry.to(args['dev'])
             damage = damage.to(args['dev'])
             imp_shrinkage = imp_shrinkage.to(args['dev'])
-            stiffness = stiffness.to(args['dev'])
             for n in range(10):
                 if n == 0:
                     x = torch.cat([geometry, 
-                                   imp_shrinkage[:,[n],:,:], 
-                                   damage[:,[n],:,:],
-                                   torch.ones_like(geometry, device=args['dev'])], axis=1)
+                                   (imp_shrinkage[:,[n],:,:]+imp_shrinkage[:,[n+1],:,:])/2, 
+                                   damage[:,[n],:,:]], axis=1)
                 else:
-                    x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y.detach()], axis=1)
-                y = net(x).detach()
-                l_dam_val = loss_dam(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu()
-                l_stiff_val = (loss((y[:,1,:,:].mean((1,2))*stiffness[:,0].detach()), stiffness[:,n+1]) / stiffness[:,0].detach()).sum().detach().cpu()
-                L_val += l_dam_val + l_stiff_val
+                    x = torch.cat([geometry, (imp_shrinkage[:,[n],:,:]+imp_shrinkage[:,[n+1],:,:])/2, y.detach()], axis=1)
+                y = net(x)
+                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:], y], axis=1)
+                y = net(x)
+                L_val += loss_dam(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu()
 
                 if j == 0:
                     seq_val.append(y[0,0].detach().cpu())
@@ -120,6 +116,7 @@ def train(net, loaders, args):
         save_network(net, args['name'] + f'_{epoch}')        
 
     return losses_train, losses_val
+
 
 def plot_outputs_shr(x, fname):
     n_samples = 10
@@ -136,16 +133,14 @@ def test(net, loaders, args):
     if args['dev'] == "cuda":
         torch.cuda.empty_cache() 
 
-    loss_damage = nn.MSELoss(reduction='none')
-    loss = nn.L1Loss(reduction='none')
+    loss = nn.MSELoss(reduction='none')
 
     L_dam = []
     L_stiff = []
 
     seq_test_dam = []
-    seq_test_stiff = []
 
-    for i, (geometry, damage, imp_shrinkage, _, stiffness) in enumerate(loaders['test']):
+    for i, (geometry, damage, imp_shrinkage, _, _) in enumerate(loaders['test']):
         geometry = geometry.to(args['dev'])
         damage = damage.to(args['dev'])
         imp_shrinkage = imp_shrinkage.to(args['dev'])
@@ -155,25 +150,20 @@ def test(net, loaders, args):
         for n in range(10):
             if n == 0:
                 x = torch.cat([geometry, 
-                               imp_shrinkage[:,[n],:,:], 
-                               damage[:,[n],:,:],
-                               torch.ones_like(geometry, device=args['dev'])], axis=1)
+                                   (imp_shrinkage[:,[n],:,:]+imp_shrinkage[:,[n+1],:,:])/2, 
+                                   damage[:,[n],:,:]], axis=1)
             else:
-                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], y.detach()], axis=1)
-            # apply the network
+                x = torch.cat([geometry, (imp_shrinkage[:,[n],:,:]+imp_shrinkage[:,[n+1],:,:])/2, y.detach()], axis=1)
+            y = net(x)
+            x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:], y.detach()], axis=1)
             y = net(x)
             # calculate mini-batch losses
-            l_dam = loss_damage(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu().numpy() / (99 * 99)
-            l_stiff = (loss((y[:,1,:,:].mean((1,2))*stiffness[:,0].detach()), stiffness[:,n+1]) / stiffness[:,0].detach()).sum().detach().cpu().numpy()
+            l_dam = loss(y[:,[0],:,:], damage[:,[n+1],:,:]).sum().detach().cpu().numpy() / (99 * 99)
             l_seq_dam.append(l_dam)
-            l_seq_stiff.append(l_stiff)
             if i == 0:
                 seq_test_dam.append(y[0,0].detach().cpu())
-                seq_test_stiff.append(y[0,1].detach().cpu())
         if i == 0:
             plot_outputs(damage[0,1:], seq_test_dam, args['name'] + f'_test')
-            plot_outputs_shr(seq_test_stiff, args['name'] + f'_test_shrinkage')
         L_dam.append(l_seq_dam)
-        L_stiff.append(l_seq_stiff)
 
-    return L_dam, L_stiff
+    return L_dam
