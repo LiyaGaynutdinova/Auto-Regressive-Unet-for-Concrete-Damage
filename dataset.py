@@ -8,78 +8,16 @@ import csv
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
 
-class dataset(Dataset):
-    def __init__(self, type=None):
-        self.imgs_path = "reduxed_results/geometry/"
-        self.label_path = "reduxed_results/damage_fields/"
-        self.data = []
-        if type=='simple':
-            self.simple = True
-            input_path = [self.imgs_path + str(x) + '.npy' for x in range(15000)]
-            output_path = [self.label_path + str(x) + '_99.npy' for x in range(15000)]
-            for i in range(15000):
-                self.data.append([input_path[i], output_path[i]])   
-        else:
-            self.simple = False
-            for i in range(15000):
-                input_1_path = self.imgs_path + str(i) + '.npy'
-                input_2_path = 'null'
-                output_path = self.label_path + str(i) + '_11.npy'
-                self.data.append([input_1_path, input_2_path, output_path])  
-                for j in range(9):
-                    input_1_path = self.imgs_path + str(i) + '.npy'
-                    input_2_path = self.label_path + str(i) + '_' + str((j+1)*11) + '.npy'
-                    output_path = self.label_path + str(i) + '_' + str((j+2)*11) + '.npy'
-                    self.data.append([input_1_path, input_2_path, output_path])      
-        self.img_res = 99
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        if self.simple == True:
-            img_path, label_path = self.data[idx]
-            img = torch.tensor(np.load(img_path)[:-1,:-1], dtype=torch.float)
-            label = torch.tensor(np.load(label_path)[:-1,:-1], dtype=torch.float)
-            tensor = torch.stack([img, label])
-            tensor = torch.unsqueeze(tensor,1)     
-        else:
-            img_path_1, img_path_2, label_path = self.data[idx]
-            img_1 = torch.tensor(np.load(img_path_1)[:-1,:-1], dtype=torch.float)
-            if img_path_2 == 'null':
-                img_2 = torch.zeros((99, 99))
-            else:
-                img_2 = torch.tensor(np.load(img_path_2)[:-1,:-1], dtype=torch.float)
-            label = torch.tensor(np.load(label_path)[:-1,:-1], dtype=torch.float)
-            tensor = torch.stack([img_1, img_2, label])   
-        transform = torch.nn.Sequential(
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomVerticalFlip(p=0.5)
-        ) 
-        tensor = transform(tensor)
-        k = np.random.rand()
-        if (k < 0.25):
-            tensor = transforms.functional.rotate(tensor, 90)
-        elif (k >= 0.25) and (k < 0.5):
-            tensor = transforms.functional.rotate(tensor, 180)
-        elif (k >= 0.5) and (k < 0.75):
-            tensor = transforms.functional.rotate(tensor, 270)
-        roll_x = np.random.randint(self.img_res)
-        roll_y = np.random.randint(self.img_res)
-        tensor = torch.roll(tensor, roll_x, -2)
-        tensor = torch.roll(tensor, roll_y, -1)
-        return tensor[0:-1], tensor[-1]
-    
-
-class dataset_seq(Dataset):
+  
+class dataset_uniform(Dataset):
     def __init__(self, type=None):
         if type=='weird':
             self.imgs_path = "reduxed_results/weird_geometry/geometry/"
             self.label_path = "reduxed_results/weird_geometry/damage_fields/"
             N = 11           
         else:
-            self.imgs_path = "reduxed_results/geometry/"
-            self.label_path = "reduxed_results/damage_fields/"
+            self.imgs_path = "reduxed_results/uniform/geometry/"
+            self.label_path = "reduxed_results/uniform/damage_fields/"
             N = 15000
         self.img_res = 99
         imp_shrinkage_values = pd.read_csv(self.label_path + 'stiffness_0.csv', sep='\t', usecols=['#shr_imposed[-]']).values.tolist()
@@ -131,7 +69,8 @@ class dataset_seq(Dataset):
                 self.imp_shrinkage, 
                 torch.tensor([sequence['obs_shrinkage']], dtype=torch.float).flatten(),
                 torch.tensor([sequence['stiffness']], dtype=torch.float).flatten())
-    
+
+
 class dataset_big(Dataset):
     def __init__(self, type=None):
         self.imgs_path = "C:/Users/Jorge/OneDrive/ModularOptimization/Concrete/level_set_big/"
@@ -184,15 +123,16 @@ def get_loaders_manual(data, batch_size):
     loaders = {'train' : train_loader, 'val' : val_loader, 'test' : test_loader}
     return loaders
 
-class dataset_new(Dataset):
+
+class dataset_nonuniform(Dataset):
     def __init__(self, type=None):
-        self.imgs_path = "reduxed_results/new_geometry/geometry/"
-        self.label_path = "reduxed_results/new_geometry/damage_fields/"
+        self.imgs_path = "reduxed_results/non_uniform/geometry/"
+        self.label_path = "reduxed_results/non_uniform/damage_fields/"
         N = 15000          
         self.img_res = 99
         self.imp_shrinkage = [np.zeros((99, 99))]
         for i in range(11, 121, 11):
-            self.imp_shrinkage.append(np.flipud(np.load(f'reduxed_results/new_geometry/shrinkage_{i}.npy')[:-1,:-1]))
+            self.imp_shrinkage.append(np.flipud(np.load(f'reduxed_results/non_uniform/shrinkage_{i}.npy')[:-1,:-1]))
         self.imp_shrinkage = np.stack(self.imp_shrinkage)
         self.imp_shrinkage = torch.tensor(self.imp_shrinkage, dtype=torch.float)
         self.data = []

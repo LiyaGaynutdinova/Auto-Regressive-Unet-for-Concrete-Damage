@@ -14,43 +14,46 @@ import torch.optim as optim
 dev = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 print('Using device:', dev)
 
-class CircularPad(nn.Module):
-    def __init__(self, pad):
-        super(CircularPad, self).__init__()
-        self.circ_pad = F.pad
-        self.pad = pad
-        self.mode = 'circular'
+class SpecialPad(nn.Module):
+    def __init__(self, pad_x, pad_y):
+        super().__init__()
+        self.pad_x = pad_x
+        self.pad_y = pad_y
         
     def forward(self, x):
-        x = self.circ_pad(x, pad=self.pad, mode=self.mode)
+        x = F.pad(x, self.pad_x, mode = 'circular')
+        x = F.pad(x, self.pad_y, mode = 'replicate')
         return x
 
 class AutoUNet(nn.Module):
     # Simple autofeeding U-Net with damage prediction only
-    def __init__(self, w=64):
+    def __init__(self):
         super().__init__()
         
         # Encoder
-        # input: 100x100x1 with initial circular padding
-        w = w
+        # input: 100x100x1 after initial special padding
+        w = 64
+        
+        self.pad1 = SpecialPad((0, 1, 0, 0), (0, 0, 0, 1))
+        self.pad2 = SpecialPad((1, 1, 0, 0), (0, 0, 1, 1))
 
         self.e11 = nn.Conv2d(3, w, kernel_size=3, padding=0) # output: 98x98xw
         self.e12 = nn.Conv2d(w, w, kernel_size=3, padding=0) # output: 96x96xw
         self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 48x48xw
 
         # input: 48x48xw
-        self.e21 = nn.Conv2d(w, 2*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 48x48x2w
-        self.e22 = nn.Conv2d(2*w, 2*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 48x48x2w
+        self.e21 = nn.Conv2d(w, 2*w, kernel_size=3) # output: 48x48x2w
+        self.e22 = nn.Conv2d(2*w, 2*w, kernel_size=3) # output: 48x48x2w
         self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 24x24x2w
 
         # input: 24x24x2w
-        self.e31 = nn.Conv2d(2*w, 4*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 24x24x4w
-        self.e32 = nn.Conv2d(4*w, 4*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 24x24x4w
+        self.e31 = nn.Conv2d(2*w, 4*w, kernel_size=3) # output: 24x24x4w
+        self.e32 = nn.Conv2d(4*w, 4*w, kernel_size=3) # output: 24x24x4w
         self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2) # output: 12x12x4w
 
         # input: 12x12x4w
-        self.e41 = nn.Conv2d(4*w, 8*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 12x12x8w
-        self.e42 = nn.Conv2d(8*w, 8*w, kernel_size=3, padding='same', padding_mode = 'circular') # output: 12x12x8w
+        self.e41 = nn.Conv2d(4*w, 8*w, kernel_size=3) # output: 12x12x8w
+        self.e42 = nn.Conv2d(8*w, 8*w, kernel_size=3) # output: 12x12x8w
 
         # Decoder
         
@@ -74,22 +77,28 @@ class AutoUNet(nn.Module):
 
     def forward(self, x):
         
-        x_pad = F.pad(x, (0, 1, 0, 1), mode = 'circular')
+        x_pad = self.pad1(x)
 
         # Encoder
         xe11 = F.relu(self.e11(x_pad))
         xe12 = F.relu(self.e12(xe11))
         xp1 = self.pool1(xe12)
 
+        xp1 = self.pad2(xp1)
         xe21 = F.relu(self.e21(xp1))
+        xe21 = self.pad2(xe21)
         xe22 = F.relu(self.e22(xe21))
         xp2 = self.pool2(xe22)
 
+        xp2 = self.pad2(xp2)
         xe31 = F.relu(self.e31(xp2))
+        xe31 = self.pad2(xe31)
         xe32 = F.relu(self.e32(xe31))
         xp3 = self.pool3(xe32)
 
+        xp3 = self.pad2(xp3)
         xe41 = F.relu(self.e41(xp3))
+        xe41 = self.pad2(xe41)
         xe42 = F.relu(self.e42(xe41))
         
         # Decoder

@@ -14,15 +14,15 @@ import torch.optim as optim
 dev = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 print('Using device:', dev)
 
-class CircularPad(nn.Module):
-    def __init__(self, pad):
-        super(CircularPad, self).__init__()
-        self.circ_pad = F.pad
-        self.pad = pad
-        self.mode = 'circular'
+class SpecialPad(nn.Module):
+    def __init__(self, pad_x, pad_y):
+        super().__init__()
+        self.pad_x = pad_x
+        self.pad_y = pad_y
         
     def forward(self, x):
-        x = self.circ_pad(x, pad=self.pad, mode=self.mode)
+        x = F.pad(x, self.pad_x, mode = 'circular')
+        x = F.pad(x, self.pad_y, mode = 'replicate')
         return x
 
 class ConvNet(nn.Module):
@@ -32,19 +32,24 @@ class ConvNet(nn.Module):
         
         self.w = w
         self.conv = nn.Sequential(
+            SpecialPad((0, 1, 0, 0), (0, 0, 0, 1)),
             nn.Conv2d(3, self.w, kernel_size=3, padding=0),
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(self.w, 2*self.w, kernel_size=3, padding='same', padding_mode = 'circular'),
+            SpecialPad((1, 1, 0, 0), (0, 0, 1, 1)),
+            nn.Conv2d(self.w, 2*self.w, kernel_size=3),
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(2*self.w, 4*self.w, kernel_size=3, padding='same', padding_mode = 'circular'),
+            SpecialPad((1, 1, 0, 0), (0, 0, 1, 1)),
+            nn.Conv2d(2*self.w, 4*self.w, kernel_size=3),
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(4*self.w, 8*self.w, kernel_size=3, padding='same', padding_mode = 'circular'),
+            SpecialPad((1, 1, 0, 0), (0, 0, 1, 1)),
+            nn.Conv2d(4*self.w, 8*self.w, kernel_size=3),
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=2, stride=2),
-            nn.Conv2d(8*self.w, 16*self.w, kernel_size=3, padding='same', padding_mode = 'circular'),
+            SpecialPad((1, 1, 0, 0), (0, 0, 1, 1)),
+            nn.Conv2d(8*self.w, 16*self.w, kernel_size=3),
             nn.ReLU()
         )
 
@@ -56,8 +61,7 @@ class ConvNet(nn.Module):
 
     def forward(self, x):
         
-        x_pad = F.pad(x, (0, 1, 0, 1), mode = 'circular')
-        x_conv = self.conv(x_pad)
+        x_conv = self.conv(x)
         out = self.linear(x_conv)
 
         return out

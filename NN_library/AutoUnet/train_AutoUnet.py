@@ -97,7 +97,7 @@ def train(net, loaders, args):
                 else:
                     x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, y.detach()], axis=1)
                 y = net(x).detach()
-                L_val += loss_dam(y[:,[0],:,:], damage[:,[n],:,:]).sum().detach().cpu()
+                L_val += loss_dam(y, damage[:,[n+1],:,:]).sum().detach().cpu()
 
                 if j == 0:
                     seq_val.append(y[0,0].detach().cpu())
