@@ -27,12 +27,12 @@ class CircularPad(nn.Module):
 
 class AutoUNet(nn.Module):
     # Simple autofeeding U-Net with damage prediction only
-    def __init__(self):
+    def __init__(self, w=64):
         super().__init__()
         
         # Encoder
         # input: 100x100x1 with initial circular padding
-        w = 64
+        w = w
 
         self.e11 = nn.Conv2d(3, w, kernel_size=3, padding=0) # output: 98x98xw
         self.e12 = nn.Conv2d(w, w, kernel_size=3, padding=0) # output: 96x96xw
