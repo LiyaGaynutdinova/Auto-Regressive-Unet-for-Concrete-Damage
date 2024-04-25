@@ -101,7 +101,7 @@ def train(net, loaders, args):
     return losses_train, losses_val
 
 
-def test(net, loaders, args):
+def test_Conv(net, loaders, args):
     net.to(args['dev'])
 
     if args['dev'] == "cuda":

@@ -119,15 +119,18 @@ def test(net, loaders, args):
     if args['dev'] == "cuda":
         torch.cuda.empty_cache() 
 
-    loss_damage = nn.MSELoss(reduction='none')
+    loss_damage = nn.L1Loss(reduction='none')
     L_dam = []
+    L_dam_total = []
     seq_test_dam = []
+    seq_test_dam_total = []
 
     for i, (geometry, damage, imp_shrinkage, _, _) in enumerate(loaders['test']):
         geometry = geometry.to(args['dev'])
         damage = damage.to(args['dev'])
         imp_shrinkage = imp_shrinkage.to(args['dev'])
         l_seq_dam = []
+        l_seq_dam_total = []
         for n in range(10):
             if n == 0:
                 x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, damage[:,[0],:,:]], axis=1)
@@ -136,15 +139,53 @@ def test(net, loaders, args):
             # apply the network
             y = net(x)
             # calculate mini-batch losses
-            l_dam = loss_damage(y, damage[:,[n+1],:,:]).mean().detach().cpu().numpy()
+            l_dam = (loss_damage(y, damage[:,[n+1],:,:])[torch.where(geometry>0)]).mean().detach().cpu().numpy()
+            l_dam_total = (torch.abs(y.sum()-damage[:,[n+1],:,:].sum())).detach().cpu().numpy()
             l_seq_dam.append(l_dam)
+            l_seq_dam_total.append(l_dam_total)
             if i == 0:
                 seq_test_dam.append(y[0,0].detach().cpu())
         if i == 0:
             plot_outputs(damage[0,1:], seq_test_dam, args['name'] + f'_test')
         L_dam.append(l_seq_dam)
+        L_dam_total.append(l_seq_dam_total)
 
-    return L_dam
+    return L_dam, L_dam_total
+
+
+def test_blur(net, loaders, args):
+    net.to(args['dev'])
+
+    weight = torch.tensor([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=torch.float, device=args['dev']).view(1,1,3,3)
+
+    if args['dev'] == "cuda":
+        torch.cuda.empty_cache() 
+
+    Var = []
+    Var_true = []
+
+    for i, (geometry, damage, imp_shrinkage, _, _) in enumerate(loaders['test']):
+        geometry = geometry.to(args['dev'])
+        damage = damage.to(args['dev'])
+        imp_shrinkage = imp_shrinkage.to(args['dev'])
+        Var_true_seq = []
+        Var_seq = []
+        for n in range(10):
+            if n == 0:
+                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, damage[:,[0],:,:]], axis=1)
+            else:
+                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, y.detach()], axis=1)
+            # apply the network
+            y = net(x)
+            # calculate mini-batch losses
+            im_grad = nn.functional.conv2d(y, weight)
+            im_grad_true = nn.functional.conv2d(damage[:,[n+1],:,:], weight)
+            Var_seq.append(im_grad.var().detach().cpu().numpy())
+            Var_true_seq.append(im_grad_true.var().detach().cpu().numpy())
+        Var.append(Var_seq)
+        Var_true.append(Var_true_seq)
+
+    return Var, Var_true
 
 
 def train_w_Conv(net, convnet, loaders, args):
