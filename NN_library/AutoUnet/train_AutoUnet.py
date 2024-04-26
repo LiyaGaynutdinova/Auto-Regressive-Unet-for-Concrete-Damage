@@ -140,7 +140,7 @@ def test(net, loaders, args):
             y = net(x)
             # calculate mini-batch losses
             l_dam = (loss_damage(y, damage[:,[n+1],:,:])[torch.where(geometry>0)]).mean().detach().cpu().numpy()
-            l_dam_total = (torch.abs(y.sum()-damage[:,[n+1],:,:].sum())).detach().cpu().numpy()
+            l_dam_total = (torch.abs(y.sum()-damage[:,[n+1],:,:].sum())/damage[:,[n+1],:,:].sum()).detach().cpu().numpy()
             l_seq_dam.append(l_dam)
             l_seq_dam_total.append(l_dam_total)
             if i == 0:
