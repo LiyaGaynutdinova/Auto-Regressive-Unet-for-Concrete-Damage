@@ -119,5 +119,9 @@ class AutoUNet(nn.Module):
 
         # Output layer
         out = torch.sigmoid(self.outconv(xd32)[:,:,:-1,:-1])
+
+        # Make sure the output values >= input values
+        res = torch.relu(out-x[:,[2]])
+        y = x + res
         
-        return out
+        return y

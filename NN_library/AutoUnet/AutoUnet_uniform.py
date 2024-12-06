@@ -32,7 +32,6 @@ class AutoUNet(nn.Module):
         
         # Encoder
         # input: 100x100x1 with initial circular padding
-        w = w
 
         self.e11 = nn.Conv2d(3, w, kernel_size=3, padding=0) # output: 98x98xw
         self.e12 = nn.Conv2d(w, w, kernel_size=3, padding=0) # output: 96x96xw
@@ -108,7 +107,11 @@ class AutoUNet(nn.Module):
         xd31 = F.relu(self.d31(xu33))
         xd32 = F.relu(self.d32(xd31))
 
-        # Output layer
+         # Output layer
         out = torch.sigmoid(self.outconv(xd32)[:,:,:-1,:-1])
+
+        # Make sure the output values >= input values
+        res = torch.relu(out-x[:,[2]])
+        y = x + res
         
         return out
