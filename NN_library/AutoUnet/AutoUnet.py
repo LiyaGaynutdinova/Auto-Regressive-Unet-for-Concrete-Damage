@@ -122,6 +122,6 @@ class AutoUNet(nn.Module):
 
         # Make sure the output values >= input values
         res = torch.relu(out-x[:,[2]])
-        y = x + res
+        y = x[:,[2]] + res
         
         return y

@@ -7,7 +7,7 @@ import torch
 import csv
 from torchvision import datasets, transforms
 from torch.utils.data import Dataset, DataLoader
-
+from scipy.io import loadmat
   
 class dataset_uniform(Dataset):
     def __init__(self, type=None):
@@ -76,7 +76,7 @@ class dataset_big(Dataset):
         self.imgs_path = "C:/Users/Jorge/OneDrive/ModularOptimization/Concrete/level_set_big/"
         N = 100000
         self.img_res = 99
-        imp_shrinkage_values = pd.read_csv('reduxed_results/damage_fields/stiffness_0.csv', sep='\t', usecols=['#shr_imposed[-]']).values.tolist()
+        imp_shrinkage_values = pd.read_csv('reduxed_results/uniform/damage_fields/stiffness_0.csv', sep='\t', usecols=['#shr_imposed[-]']).values.tolist()
         imp_shrinkage_matrices = [np.full((self.img_res, self.img_res), value) for value in imp_shrinkage_values]
         imp_shrinkage_matrices_stacked = np.stack(imp_shrinkage_matrices)
         self.imp_shrinkage = torch.tensor(imp_shrinkage_matrices_stacked, dtype=torch.float)
@@ -94,6 +94,7 @@ class dataset_big(Dataset):
         tensor = torch.tensor(img_geometry, dtype=torch.float).view(1,99,99)
         return tensor, self.imp_shrinkage
     
+
 def get_loaders(data, batch_size):
     n_train = int(0.8 * data.__len__())
     n_test = (data.__len__() - n_train) // 2
@@ -168,3 +169,55 @@ class dataset_nonuniform(Dataset):
                 self.imp_shrinkage, #shrinkage
                 torch.tensor([sequence['obs_shrinkage']], dtype=torch.float).flatten(),
                 torch.tensor([sequence['stiffness']], dtype=torch.float).flatten())
+    
+
+class dataset_big_nu(Dataset):
+    def __init__(self, type=None):
+        self.imgs_path = "C:/Users/Jorge/OneDrive/ModularOptimization/Concrete/level_set_big/"
+        N = 100000
+        self.img_res = 99
+        self.imp_shrinkage = [np.zeros((99, 99))]
+        for i in range(11, 121, 11):
+            self.imp_shrinkage.append(np.flipud(np.load(f'reduxed_results/non_uniform/shrinkage_{i}.npy')[:-1,:-1]))
+        self.imp_shrinkage = np.stack(self.imp_shrinkage)
+        self.imp_shrinkage = torch.tensor(self.imp_shrinkage, dtype=torch.float)
+        self.data = []
+        for i in range(N):
+            sequence = self.imgs_path + str(i) + '.npy'
+            self.data.append(sequence)       
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        sequence = self.data[idx]
+        img_geometry = 1.-np.load(sequence)[:-1,:-1]
+        tensor = torch.tensor(img_geometry, dtype=torch.float).view(1,99,99)
+        return tensor, self.imp_shrinkage
+    
+
+class dataset_smooth(Dataset):
+    def __init__(self, type=None):
+        self.img_res = 99
+        imp_shrinkage_values = pd.read_csv('reduxed_results/uniform/damage_fields/stiffness_0.csv', sep='\t', usecols=['#shr_imposed[-]']).values.tolist()
+        imp_shrinkage_matrices = [np.full((self.img_res, self.img_res), value) for value in imp_shrinkage_values]
+        imp_shrinkage_matrices_stacked = np.stack(imp_shrinkage_matrices)
+        self.imp_shrinkage = torch.tensor(imp_shrinkage_matrices_stacked, dtype=torch.float)
+        self.data = []
+        for i in range(1000):
+            sequence = {}
+            for j in [0., 0.2, 0.4]:
+                filename = f'smoothen/{i}_{j}.mat'
+                if os.path.isfile(filename):
+                    sequence['geometry'] = filename
+                    self.data.append(sequence)  
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        sequence = self.data[idx]
+        img_geometry = loadmat(sequence['geometry'])['newImg'][:99,:99]
+        return (torch.tensor(img_geometry, dtype=torch.float).view(1, self.img_res, self.img_res), #geometry
+                self.imp_shrinkage #shrinkage
+                )

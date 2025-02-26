@@ -4,18 +4,6 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from save_load import *
 
-def plot_outputs(x, y, fname):
-    n_samples = 10
-    fig, axs = plt.subplots(nrows=2, ncols=n_samples, figsize=(n_samples, 2), dpi=200)
-    for i in range(n_samples):
-        axs.flat[i].imshow(x[i].detach().cpu().numpy(), cmap='Greys', vmin=0, vmax=1)
-        axs.flat[i].set_axis_off()
-    for i in range(n_samples, 2*n_samples):
-        axs.flat[i].imshow(y[i-n_samples].numpy(), cmap='Greys', vmin=0, vmax=1)
-        axs.flat[i].set_axis_off()
-    plt.savefig(fname)
-    plt.close()
-
 
 def train(net, loaders, args):
 
@@ -44,17 +32,17 @@ def train(net, loaders, args):
         for i, (geometry, damage, imp_shrinkage, obs_shrinkage, stiffness) in enumerate(loaders['train']):
             geometry = geometry.to(args['dev'])
             damage = damage.to(args['dev'])
-            imp_shrinkage = imp_shrinkage.to(args['dev'])
-            obs_shrinkage = obs_shrinkage.to(args['dev'])
-            stiffness = stiffness.to(args['dev'])
+            imp_shrinkage = imp_shrinkage.to(args['dev']) / -0.001
+            obs_shrinkage = obs_shrinkage.to(args['dev']) / -0.001
+            stiffness = stiffness.to(args['dev']) / 30000
             l_seq = 0
-            for n in range(1, 11):
-                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:] / -0.001, damage[:,[n],:,:]], axis=1)
+            for n in range(11):
+                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], damage[:,[n],:,:]], axis=1)
                 # apply the network
                 y = net(x)
                 # calculate mini-batch losses
-                l_stiff = (loss(y[:,0]*stiffness[:,0].detach(), stiffness[:,n]) / stiffness[:,n].detach()).sum()
-                l_shr = (loss(y[:,1]*(-0.001), obs_shrinkage[:,n]) / torch.abs(obs_shrinkage[:,n]).detach()).sum()
+                l_stiff = loss(y[:,0], stiffness[:,n]).sum()
+                l_shr = loss(y[:,1], obs_shrinkage[:,n]).sum()
                 l = l_shr + l_stiff
                 # accumulate the total loss as a regular float number
                 loss_batch = l.detach().item()
@@ -79,17 +67,16 @@ def train(net, loaders, args):
         L_val = 0
 
         for j, (geometry, damage, imp_shrinkage, obs_shrinkage, stiffness) in enumerate(loaders['val']):
-            seq_val = []
             geometry = geometry.to(args['dev'])
             damage = damage.to(args['dev'])
-            imp_shrinkage = imp_shrinkage.to(args['dev'])
-            obs_shrinkage = obs_shrinkage.to(args['dev'])
-            stiffness = stiffness.to(args['dev'])
-            for n in range(1, 11):
-                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:] / -0.001, damage[:,[n],:,:]], axis=1)
+            imp_shrinkage = imp_shrinkage.to(args['dev']) / -0.001
+            obs_shrinkage = obs_shrinkage.to(args['dev']) / -0.001
+            stiffness = stiffness.to(args['dev']) / 30000
+            for n in range(11):
+                x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], damage[:,[n],:,:]], axis=1)
                 y = net(x).detach()
-                l_stiff_val = (loss(y[:,0]*stiffness[:,0].detach(), stiffness[:,n]) / stiffness[:,n].detach()).sum().detach().cpu()
-                l_shr_val = (loss(y[:,1]*(-0.001), obs_shrinkage[:,n]) / torch.abs(obs_shrinkage[:,n]).detach()).sum().detach().cpu()
+                l_stiff_val = loss(y[:,0], stiffness[:,n]).sum().detach().cpu()
+                l_shr_val = loss(y[:,1], obs_shrinkage[:,n]).sum().detach().cpu()
                 L_val += l_shr_val + l_stiff_val
         
         losses_train.append(L / n_train)
@@ -115,16 +102,16 @@ def test_Conv(net, loaders, args):
     for i, (geometry, damage, imp_shrinkage, obs_shrinkage, stiffness) in enumerate(loaders['test']):
         geometry = geometry.to(args['dev'])
         damage = damage.to(args['dev'])
-        imp_shrinkage = imp_shrinkage.to(args['dev'])
-        obs_shrinkage = obs_shrinkage.to(args['dev'])
-        stiffness = stiffness.to(args['dev'])
+        imp_shrinkage = imp_shrinkage.to(args['dev']) / -0.001
+        obs_shrinkage = obs_shrinkage.to(args['dev']) / -0.001
+        stiffness = stiffness.to(args['dev']) / 30000
         l_seq_shr = []
         l_seq_stiff = []
         for n in range(1, 11):
-            x = torch.cat([geometry, imp_shrinkage[:,[n],:,:] / -0.001, damage[:,[n],:,:]], axis=1)
+            x = torch.cat([geometry, imp_shrinkage[:,[n],:,:], damage[:,[n],:,:]], axis=1)
             y = net(x)
-            l_stiff = (loss(y[:,0]*stiffness[:,0], stiffness[:,n]) / stiffness[:,n]).sum().detach().cpu()
-            l_shr = (loss(y[:,1]*(-0.001), obs_shrinkage[:,n]) / torch.abs(obs_shrinkage[:,n])).sum().detach().cpu()
+            l_stiff = loss(y[:,0], stiffness[:,n]).sum().detach().cpu()
+            l_shr = loss(y[:,1], obs_shrinkage[:,n]).sum().detach().cpu()
             l_seq_stiff.append(l_stiff)
             l_seq_shr.append(l_shr)
         L_stiff.append(l_seq_stiff)
@@ -149,23 +136,23 @@ def test_w_Auto(net, convnet, loaders, args):
     for i, (geometry, damage, imp_shrinkage, obs_shrinkage, stiffness) in enumerate(loaders['test']):
         geometry = geometry.to(args['dev'])
         damage = damage.to(args['dev'])
-        imp_shrinkage = imp_shrinkage.to(args['dev'])
-        obs_shrinkage = obs_shrinkage.to(args['dev'])
-        stiffness = stiffness.to(args['dev'])
+        imp_shrinkage = imp_shrinkage.to(args['dev']) / -0.001
+        obs_shrinkage = obs_shrinkage.to(args['dev']) / -0.001
+        stiffness = stiffness.to(args['dev']) / 30000
         l_seq_shr = []
         l_seq_stiff = []
         for n in range(10):
             if n == 0:
-                x = torch.cat([geometry, imp_shrinkage[:,[1],:,:] / -0.001, damage[:,[0],:,:]], axis=1)
+                x = torch.cat([geometry, imp_shrinkage[:,[1],:,:], damage[:,[0],:,:]], axis=1)
             else:
-                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, y[:,[0],:,:].detach()], axis=1)
+                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:], y[:,[0],:,:].detach()], axis=1)
             # apply the network
             y = net(x)
-            x_shr = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, y[:,[0],:,:].detach()], axis=1)
+            x_shr = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:], y[:,[0],:,:].detach()], axis=1)
             y_shr = convnet(x_shr)
             # calculate mini-batch losses
-            l_stiff = (loss(y_shr[:,0]*stiffness[:,0], stiffness[:,n+1]) / stiffness[:,n+1]).sum().detach().cpu()
-            l_shr = (loss(y_shr[:,1]*(-0.001), obs_shrinkage[:,n+1]) / torch.abs(obs_shrinkage[:,n+1])).sum().detach().cpu()
+            l_stiff = loss(y_shr[:,0], stiffness[:,n+1]).sum().detach().cpu()
+            l_shr = loss(y_shr[:,1], obs_shrinkage[:,n+1]).sum().detach().cpu()
             l_seq_stiff.append(l_stiff)
             l_seq_shr.append(l_shr)
         L_stiff.append(l_seq_stiff)

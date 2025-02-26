@@ -2,13 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import torch
-import torchvision
-from torchvision import datasets, transforms
-from torch.utils.data.sampler import SubsetRandomSampler
 
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 
 # query if we have GPU
 dev = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -56,7 +52,7 @@ class ConvNet(nn.Module):
         self.linear = nn.Sequential(
             nn.Flatten(),
             nn.Linear(16*self.w * 6 * 6, 2),
-            nn.Sigmoid()
+            nn.ReLU()
         )
 
     def forward(self, x):

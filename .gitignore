@@ -6469,3 +6469,7 @@ reduxed_results/reduxed_results/damage_fields/0_11.npy
 RecUnet_MLP_0
 RecUnet_MLP_1
 RecUnet_all_0
+microstucture_big_UN_2.pkl
+*.pkl
+/NN_library/VAE
+/smoothen
