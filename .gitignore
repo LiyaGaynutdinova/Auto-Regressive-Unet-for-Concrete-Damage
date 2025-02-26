@@ -6473,3 +6473,4 @@ microstucture_big_UN_2.pkl
 *.pkl
 /NN_library/VAE
 /smoothen
+*.pkl
