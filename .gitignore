@@ -6469,3 +6469,6 @@ reduxed_results/reduxed_results/damage_fields/0_11.npy
 RecUnet_MLP_0
 RecUnet_MLP_1
 RecUnet_all_0
+*.pkl
+/smoothen
+/smooth
