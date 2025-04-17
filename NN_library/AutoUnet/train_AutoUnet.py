@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torcheval.metrics.functional import multiclass_f1_score
 import matplotlib.pyplot as plt
 from save_load import *
 
@@ -151,6 +152,65 @@ def test(net, loaders, args):
         L_dam_total.append(l_seq_dam_total)
 
     return L_dam, L_dam_total
+
+
+def test_bias(net, loaders, args):
+    net.to(args['dev'])
+
+    if args['dev'] == "cuda":
+        torch.cuda.empty_cache() 
+
+    L_dam_total = []
+    seq_test_dam_total = []
+
+    for i, (geometry, damage, imp_shrinkage, _, _) in enumerate(loaders['test']):
+        geometry = geometry.to(args['dev'])
+        damage = damage.to(args['dev'])
+        imp_shrinkage = imp_shrinkage.to(args['dev'])
+        l_seq_dam_total = []
+        for n in range(10):
+            if n == 0:
+                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, damage[:,[0],:,:]], axis=1)
+            else:
+                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, y.detach()], axis=1)
+            # apply the network
+            y = net(x)
+            # calculate mini-batch losses
+            l_dam_total = ((y.sum()-damage[:,[n+1],:,:].sum())/damage[:,[n+1],:,:].sum()).detach().cpu().numpy()
+            l_seq_dam_total.append(l_dam_total)
+        L_dam_total.append(l_seq_dam_total)
+
+    return L_dam_total
+
+
+def test_F1(net, loaders, args):
+    net.to(args['dev'])
+
+    if args['dev'] == "cuda":
+        torch.cuda.empty_cache() 
+
+    L_dam_total = []
+
+    for i, (geometry, damage, imp_shrinkage, _, _) in enumerate(loaders['test']):
+        geometry = geometry.to(args['dev'])
+        damage = damage.to(args['dev'])
+        imp_shrinkage = imp_shrinkage.to(args['dev'])
+        l_seq_dam_total = []
+        for n in range(10):
+            if n == 0:
+                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, damage[:,[0],:,:]], axis=1)
+            else:
+                x = torch.cat([geometry, imp_shrinkage[:,[n+1],:,:] / -0.001, y.detach()], axis=1)
+            # apply the network
+            y = net(x)
+            # calculate mini-batch losses
+            y_bin = torch.where(y>0.25,1.,0.).flatten()
+            dam_bin = torch.where(damage[:,n+1,:,:]>0.5,1.,0.).flatten()
+            l_dam_total = multiclass_f1_score(y_bin, dam_bin, num_classes=2).detach().cpu().numpy()
+            l_seq_dam_total.append(l_dam_total)
+        L_dam_total.append(l_seq_dam_total)
+
+    return L_dam_total
 
 
 def test_blur(net, loaders, args):

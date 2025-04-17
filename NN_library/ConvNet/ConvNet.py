@@ -52,7 +52,7 @@ class ConvNet(nn.Module):
         self.linear = nn.Sequential(
             nn.Flatten(),
             nn.Linear(16*self.w * 6 * 6, 2),
-            nn.ReLU()
+            nn.Softplus()
         )
 
     def forward(self, x):
