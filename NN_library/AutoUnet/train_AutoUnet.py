@@ -204,7 +204,7 @@ def test_F1(net, loaders, args):
             # apply the network
             y = net(x)
             # calculate mini-batch losses
-            y_bin = torch.where(y>0.25,1.,0.).flatten()
+            y_bin = torch.where(y>0.5,1.,0.).flatten()
             dam_bin = torch.where(damage[:,n+1,:,:]>0.5,1.,0.).flatten()
             l_dam_total = multiclass_f1_score(y_bin, dam_bin, num_classes=2).detach().cpu().numpy()
             l_seq_dam_total.append(l_dam_total)
